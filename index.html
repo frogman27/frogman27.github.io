@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>WebXR AR Sticky Model Example</title>
+  <title>WebXR AR Marker with Sticky Model</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
@@ -28,11 +28,12 @@
   <div id="loading">Starting AR...</div>
 
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-    <!-- Lights -->
+
+    <!-- Lighting -->
     <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
     <a-entity light="type: ambient; color: #888"></a-entity>
 
-    <!-- Assets -->
+    <!-- Load GLB model -->
     <a-assets>
       <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
     </a-assets>
@@ -40,7 +41,7 @@
     <!-- Marker -->
     <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt"></a-marker>
 
-    <!-- Detached model container -->
+    <!-- Scene Root for persistent model -->
     <a-entity id="modelContainer"></a-entity>
 
     <!-- Camera -->
@@ -48,15 +49,15 @@
   </a-scene>
 
   <script>
-    // Wait for A-Frame to be fully initialized before using AFRAME.THREE
-    window.addEventListener("load", () => {
-      const THREE = AFRAME.THREE;
+    window.addEventListener("DOMContentLoaded", () => {
       const scene = document.querySelector("a-scene");
-      const marker = document.querySelector("#myMarker");
-      const container = document.querySelector("#modelContainer");
+      const marker = document.querySelector('#myMarker');
+      const container = document.querySelector('#modelContainer');
       let modelPlaced = false;
 
       scene.addEventListener("loaded", () => {
+        const THREE = AFRAME.THREE; // Ensure THREE is ready
+
         document.getElementById("loading").style.display = "none";
 
         marker.addEventListener("markerFound", () => {
@@ -68,6 +69,7 @@
             model.setAttribute("scale", "0.5 0.5 0.5");
             model.setAttribute("animation-mixer", "");
 
+            // Delay to ensure world matrix is up to date
             setTimeout(() => {
               const worldPos = new THREE.Vector3();
               const worldQuat = new THREE.Quaternion();
@@ -82,7 +84,7 @@
 
               container.appendChild(model);
               modelPlaced = true;
-              console.log("📦 Model placed at marker position.");
+              console.log("📦 Model placed in scene.");
             }, 100);
           }
         });
