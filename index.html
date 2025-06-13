@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>WebXR AR Sticky Model</title>
+  <title>Sticky AR Model Example</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
   <style>
@@ -22,79 +22,73 @@
     }
   </style>
 </head>
-
 <body>
-<div id="loading">Starting AR...</div>
+  <div id="loading">Starting AR...</div>
 
-<a-scene
-  embedded
-  arjs="sourceType: webcam; debugUIEnabled: false;"
-  vr-mode-ui="enabled: false"
->
-  <a-assets>
-    <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
-  </a-assets>
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+    <a-assets>
+      <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
+    </a-assets>
 
-  <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
-  <a-entity light="type: ambient; color: #888"></a-entity>
+    <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
+    <a-entity light="type: ambient; color: #888"></a-entity>
 
-  <!-- Marker -->
-  <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt"></a-marker>
+    <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt"></a-marker>
+    <a-entity camera></a-entity>
+  </a-scene>
 
-  <!-- Camera -->
-  <a-entity camera></a-entity>
-</a-scene>
-
-<script>
-  window.addEventListener("DOMContentLoaded", () => {
-    const scene = document.querySelector("a-scene");
-    const marker = document.querySelector("#myMarker");
-    let modelPlaced = false;
-
-    scene.addEventListener("loaded", () => {
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const scene = document.querySelector("a-scene");
+      const marker = document.querySelector("#myMarker");
       const THREE = AFRAME.THREE;
-      document.getElementById("loading").style.display = "none";
+      let modelPlaced = false;
 
-      marker.addEventListener("markerFound", () => {
-        console.log("🎯 Marker detected!");
+      scene.addEventListener("loaded", () => {
+        document.getElementById("loading").style.display = "none";
 
-        if (!modelPlaced) {
-          const model = document.createElement("a-entity");
-          model.setAttribute("gltf-model", "#demoModel");
-          model.setAttribute("scale", "0.5 0.5 0.5");
-          model.setAttribute("animation-mixer", "");
-          marker.appendChild(model);
+        marker.addEventListener("markerFound", () => {
+          console.log("🎯 Marker detected!");
 
-          model.addEventListener("model-loaded", () => {
-            // Get world transform from marker
-            const worldPos = new THREE.Vector3();
-            const worldQuat = new THREE.Quaternion();
-            const worldEuler = new THREE.Euler();
+          if (!modelPlaced) {
+            const model = document.createElement("a-entity");
+            model.setAttribute("gltf-model", "#demoModel");
+            model.setAttribute("scale", "0.5 0.5 0.5");
+            model.setAttribute("animation-mixer", "");
 
-            marker.object3D.updateMatrixWorld();
-            marker.object3D.getWorldPosition(worldPos);
-            marker.object3D.getWorldQuaternion(worldQuat);
-            worldEuler.setFromQuaternion(worldQuat);
+            marker.appendChild(model);
 
-            // Apply world transform to model
-            model.object3D.position.copy(worldPos);
-            model.object3D.rotation.copy(worldEuler);
+            model.addEventListener("model-loaded", () => {
+              // Delay ensures model is fully parsed and object3D is available
+              setTimeout(() => {
+                const worldPos = new THREE.Vector3();
+                const worldQuat = new THREE.Quaternion();
+                const worldEuler = new THREE.Euler();
 
-            // Reparent to scene to stick in world
-            marker.removeChild(model);
-            scene.appendChild(model);
+                marker.object3D.updateMatrixWorld();
+                marker.object3D.getWorldPosition(worldPos);
+                marker.object3D.getWorldQuaternion(worldQuat);
+                worldEuler.setFromQuaternion(worldQuat);
 
-            modelPlaced = true;
-            console.log("📦 Model placed in world.");
-          });
-        }
-      });
+                // Detach and move to scene root
+                marker.removeChild(model);
+                scene.appendChild(model);
 
-      marker.addEventListener("markerLost", () => {
-        console.log("👋 Marker lost.");
+                model.object3D.position.copy(worldPos);
+                model.object3D.rotation.copy(worldEuler);
+
+                modelPlaced = true;
+                console.log("📦 Model placed at world position", worldPos);
+              }, 100);
+            });
+          }
+        });
+
+        marker.addEventListener("markerLost", () => {
+          console.log("👋 Marker lost.");
+        });
       });
     });
-  });
-</script>
+  </script>
 </body>
 </html>
