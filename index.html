@@ -5,7 +5,6 @@
     <title>WebXR AR Marker with 3D Model</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
-
     <style>
       body { margin: 0; overflow: hidden; }
       #loading {
@@ -30,7 +29,7 @@
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
       
       <!-- Custom Marker -->
-      <a-marker type="pattern" url="markers/pattern-Demo_tag.patt">
+      <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt">
         <a-box position="0 0.5 0" color="red" depth="1" height="1" width="1"
                animation="property: rotation; to: 0 360 0; loop: true; dur: 2000">
         </a-box>
@@ -45,6 +44,18 @@
         const scene = document.querySelector("a-scene");
         scene.addEventListener("loaded", () => {
           document.getElementById("loading").style.display = "none";
+
+          const marker = document.querySelector('#myMarker');
+          if (marker) {
+            marker.addEventListener('markerFound', () => {
+              console.log('🎯 Marker detected!');
+            });
+            marker.addEventListener('markerLost', () => {
+              console.log('👋 Marker lost.');
+            });
+          } else {
+            console.warn('Marker element not found!');
+          }
         });
       });
     </script>
