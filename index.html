@@ -1,72 +1,90 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>WebXR AR Marker with Animated GLB</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-    <style>
-      body { margin: 0; overflow: hidden; }
-      #loading {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: black;
-        color: white;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: sans-serif;
-        font-size: 1.5em;
-        z-index: 10;
-      }
-    </style>
-  </head>
+<head>
+  <meta charset="utf-8">
+  <title>WebXR AR Marker with Sticky Model</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #loading {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: black;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+      font-size: 1.5em;
+      z-index: 10;
+    }
+  </style>
+</head>
 
-  <body>
-    <div id="loading">Starting AR...</div>
+<body>
+  <div id="loading">Starting AR...</div>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-      
-      <!-- Lighting -->
-      <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
-      <a-entity light="type: ambient; color: #888"></a-entity>
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
 
-      <!-- Load GLB model -->
-      <a-assets>
-        <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
-      </a-assets>
+    <!-- Lighting -->
+    <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
+    <a-entity light="type: ambient; color: #888"></a-entity>
 
-      <!-- Marker with animated model -->
-      <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt">
-        <a-entity 
-          gltf-model="#demoModel" 
-          scale="0.5 0.5 0.5" 
-          position="0 0 0" 
-          animation-mixer>
-        </a-entity>
-      </a-marker>
+    <!-- Load GLB model -->
+    <a-assets>
+      <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
+    </a-assets>
 
-      <!-- Camera -->
-      <a-entity camera></a-entity>
-    </a-scene>
+    <!-- Marker -->
+    <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt"></a-marker>
 
-    <script>
-      window.addEventListener("DOMContentLoaded", () => {
-        const scene = document.querySelector("a-scene");
-        scene.addEventListener("loaded", () => {
-          document.getElementById("loading").style.display = "none";
+    <!-- Scene Root -->
+    <a-entity id="modelContainer"></a-entity>
 
-          const marker = document.querySelector('#myMarker');
-          marker.addEventListener('markerFound', () => {
-            console.log('🎯 Marker detected!');
-          });
-          marker.addEventListener('markerLost', () => {
-            console.log('👋 Marker lost.');
-          });
+    <!-- Camera -->
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const scene = document.querySelector("a-scene");
+      const marker = document.querySelector('#myMarker');
+      const container = document.querySelector('#modelContainer');
+      let modelPlaced = false;
+
+      scene.addEventListener("loaded", () => {
+        document.getElementById("loading").style.display = "none";
+
+        marker.addEventListener('markerFound', () => {
+          console.log('🎯 Marker detected!');
+
+          if (!modelPlaced) {
+            // Create and clone the model
+            const model = document.createElement('a-entity');
+            model.setAttribute('gltf-model', '#demoModel');
+            model.setAttribute('scale', '0.5 0.5 0.5');
+            model.setAttribute('animation-mixer', '');
+
+            // Get marker world position & rotation
+            const position = marker.object3D.position.clone();
+            const rotation = marker.object3D.rotation.clone();
+
+            model.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+            model.setAttribute('rotation', `${THREE.Math.radToDeg(rotation.x)} ${THREE.Math.radToDeg(rotation.y)} ${THREE.Math.radToDeg(rotation.z)}`);
+
+            container.appendChild(model);
+            modelPlaced = true;
+          }
+        });
+
+        marker.addEventListener('markerLost', () => {
+          console.log('👋 Marker lost.');
         });
       });
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
