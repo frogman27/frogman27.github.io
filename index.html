@@ -22,15 +22,18 @@
       }
     </style>
   </head>
-
   <body>
     <div id="loading">Starting AR...</div>
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
       
-      <!-- Custom Marker -->
+      <!-- Lighting -->
+      <a-entity light="type: directional; color: #fff; intensity: 1" position="1 1 0"></a-entity>
+      <a-entity light="type: ambient; color: #888"></a-entity>
+
+      <!-- Marker with box -->
       <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt">
-        <a-box position="0 0.5 0" color="red" depth="1" height="1" width="1"
+        <a-box position="0 0.5 0" scale="2 2 2" color="red"
                animation="property: rotation; to: 0 360 0; loop: true; dur: 2000">
         </a-box>
       </a-marker>
@@ -46,16 +49,12 @@
           document.getElementById("loading").style.display = "none";
 
           const marker = document.querySelector('#myMarker');
-          if (marker) {
-            marker.addEventListener('markerFound', () => {
-              console.log('🎯 Marker detected!');
-            });
-            marker.addEventListener('markerLost', () => {
-              console.log('👋 Marker lost.');
-            });
-          } else {
-            console.warn('Marker element not found!');
-          }
+          marker.addEventListener('markerFound', () => {
+            console.log('🎯 Marker detected!');
+          });
+          marker.addEventListener('markerLost', () => {
+            console.log('👋 Marker lost.');
+          });
         });
       });
     </script>
