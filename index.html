@@ -41,9 +41,6 @@
     <!-- Marker -->
     <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt"></a-marker>
 
-    <!-- Scene Root for persistent model -->
-    <a-entity id="modelContainer"></a-entity>
-
     <!-- Camera -->
     <a-entity camera></a-entity>
   </a-scene>
@@ -51,43 +48,43 @@
   <script>
     window.addEventListener("DOMContentLoaded", () => {
       const scene = document.querySelector("a-scene");
-      const marker = document.querySelector('#myMarker');
-      const container = document.querySelector('#modelContainer');
+      const marker = document.querySelector("#myMarker");
       let modelPlaced = false;
 
       scene.addEventListener("loaded", () => {
         const THREE = AFRAME.THREE;
-
         document.getElementById("loading").style.display = "none";
 
         marker.addEventListener("markerFound", () => {
           console.log("🎯 Marker detected!");
 
           if (!modelPlaced) {
-            const model = document.createElement("a-entity");
-            model.setAttribute("gltf-model", "#demoModel");
-            model.setAttribute("scale", "0.5 0.5 0.5");
-            model.setAttribute("animation-mixer", "");
-
             setTimeout(() => {
+              const model = document.createElement("a-entity");
+              model.setAttribute("gltf-model", "#demoModel");
+              model.setAttribute("scale", "0.5 0.5 0.5");
+              model.setAttribute("animation-mixer", "");
+
+              // Extract world position/rotation from marker
+              const markerObj = marker.object3D;
               const worldPos = new THREE.Vector3();
               const worldQuat = new THREE.Quaternion();
               const worldEuler = new THREE.Euler();
 
-              marker.object3D.getWorldPosition(worldPos);
-              marker.object3D.getWorldQuaternion(worldQuat);
-              worldEuler.setFromQuaternion(worldQuat);
+              markerObj.getWorldPosition(worldPos);
+              markerObj.getWorldQuaternion(worldQuat);
+              worldEuler.setFromQuaternion(worldQuat, 'YXZ');
 
-              const rx = THREE.MathUtils.radToDeg(worldEuler.x);
-              const ry = THREE.MathUtils.radToDeg(worldEuler.y);
-              const rz = THREE.MathUtils.radToDeg(worldEuler.z);
-
+              // Apply transforms
               model.setAttribute("position", `${worldPos.x} ${worldPos.y} ${worldPos.z}`);
-              model.setAttribute("rotation", `${rx} ${ry} ${rz}`);
+              model.setAttribute("rotation", `${THREE.MathUtils.radToDeg(worldEuler.x)} ${THREE.MathUtils.radToDeg(worldEuler.y)} ${THREE.MathUtils.radToDeg(worldEuler.z)}`);
 
-              container.appendChild(model);
+              // Attach to scene root in world space
+              scene.object3D.add(model.object3D); // Bypass A-Frame DOM hierarchy for world-fixed positioning
+              scene.appendChild(model); // Still append to DOM for A-Frame bookkeeping
+
               modelPlaced = true;
-              console.log("📦 Model placed in scene.");
+              console.log("📦 Model placed in world.");
             }, 100);
           }
         });
