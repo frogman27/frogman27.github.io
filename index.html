@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Sticky AR Model Example</title>
+  <title>Sticky AR Model</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
   <style>
@@ -58,27 +58,34 @@
 
             marker.appendChild(model);
 
+            model.addEventListener("model-error", (e) => {
+              console.error("❌ Model failed to load!", e.detail.src);
+            });
+
             model.addEventListener("model-loaded", () => {
-              // Delay ensures model is fully parsed and object3D is available
               setTimeout(() => {
-                const worldPos = new THREE.Vector3();
-                const worldQuat = new THREE.Quaternion();
-                const worldEuler = new THREE.Euler();
+                try {
+                  const worldPos = new THREE.Vector3();
+                  const worldQuat = new THREE.Quaternion();
+                  const worldEuler = new THREE.Euler();
 
-                marker.object3D.updateMatrixWorld();
-                marker.object3D.getWorldPosition(worldPos);
-                marker.object3D.getWorldQuaternion(worldQuat);
-                worldEuler.setFromQuaternion(worldQuat);
+                  marker.object3D.updateMatrixWorld();
+                  marker.object3D.getWorldPosition(worldPos);
+                  marker.object3D.getWorldQuaternion(worldQuat);
+                  worldEuler.setFromQuaternion(worldQuat);
 
-                // Detach and move to scene root
-                marker.removeChild(model);
-                scene.appendChild(model);
+                  // Detach and move to world space
+                  marker.removeChild(model);
+                  scene.appendChild(model);
 
-                model.object3D.position.copy(worldPos);
-                model.object3D.rotation.copy(worldEuler);
+                  model.object3D.position.copy(worldPos);
+                  model.object3D.rotation.copy(worldEuler);
 
-                modelPlaced = true;
-                console.log("📦 Model placed at world position", worldPos);
+                  modelPlaced = true;
+                  console.log("📦 Model placed at", worldPos);
+                } catch (err) {
+                  console.error("⚠️ Error positioning model:", err);
+                }
               }, 100);
             });
           }
