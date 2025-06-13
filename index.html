@@ -2,14 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>WebXR AR Marker with Sticky Model</title>
+  <title>WebXR AR Sticky Model Example</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-
-    <!-- Add this line to expose THREE -->
   <script>const THREE = AFRAME.THREE;</script>
-  
   <style>
     body { margin: 0; overflow: hidden; }
     #loading {
@@ -32,12 +29,11 @@
   <div id="loading">Starting AR...</div>
 
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-
-    <!-- Lighting -->
+    <!-- Lights -->
     <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
     <a-entity light="type: ambient; color: #888"></a-entity>
 
-    <!-- Load GLB model -->
+    <!-- Assets -->
     <a-assets>
       <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
     </a-assets>
@@ -45,7 +41,7 @@
     <!-- Marker -->
     <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt"></a-marker>
 
-    <!-- Scene Root -->
+    <!-- World container for detached model -->
     <a-entity id="modelContainer"></a-entity>
 
     <!-- Camera -->
@@ -55,37 +51,45 @@
   <script>
     window.addEventListener("DOMContentLoaded", () => {
       const scene = document.querySelector("a-scene");
-      const marker = document.querySelector('#myMarker');
-      const container = document.querySelector('#modelContainer');
+      const marker = document.querySelector("#myMarker");
+      const container = document.querySelector("#modelContainer");
       let modelPlaced = false;
 
       scene.addEventListener("loaded", () => {
         document.getElementById("loading").style.display = "none";
 
-        marker.addEventListener('markerFound', () => {
-          console.log('🎯 Marker detected!');
+        marker.addEventListener("markerFound", () => {
+          console.log("🎯 Marker detected!");
 
           if (!modelPlaced) {
-            // Create and clone the model
-            const model = document.createElement('a-entity');
-            model.setAttribute('gltf-model', '#demoModel');
-            model.setAttribute('scale', '0.5 0.5 0.5');
-            model.setAttribute('animation-mixer', '');
+            const model = document.createElement("a-entity");
+            model.setAttribute("gltf-model", "#demoModel");
+            model.setAttribute("scale", "0.5 0.5 0.5");
+            model.setAttribute("animation-mixer", "");
 
-            // Get marker world position & rotation
-            const position = marker.object3D.position.clone();
-            const rotation = marker.object3D.rotation.clone();
+            // Delay one frame to let marker position update fully
+            setTimeout(() => {
+              // Use world position and quaternion for accuracy
+              const worldPos = new THREE.Vector3();
+              const worldQuat = new THREE.Quaternion();
+              const worldEuler = new THREE.Euler();
 
-            model.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
-            model.setAttribute('rotation', `${THREE.Math.radToDeg(rotation.x)} ${THREE.Math.radToDeg(rotation.y)} ${THREE.Math.radToDeg(rotation.z)}`);
+              marker.object3D.getWorldPosition(worldPos);
+              marker.object3D.getWorldQuaternion(worldQuat);
+              worldEuler.setFromQuaternion(worldQuat);
 
-            container.appendChild(model);
-            modelPlaced = true;
+              model.setAttribute("position", `${worldPos.x} ${worldPos.y} ${worldPos.z}`);
+              model.setAttribute("rotation", `${THREE.Math.radToDeg(worldEuler.x)} ${THREE.Math.radToDeg(worldEuler.y)} ${THREE.Math.radToDeg(worldEuler.z)}`);
+
+              container.appendChild(model);
+              modelPlaced = true;
+              console.log("📦 Model placed at marker position.");
+            }, 100); // wait 1 frame (optional tweak)
           }
         });
 
-        marker.addEventListener('markerLost', () => {
-          console.log('👋 Marker lost.');
+        marker.addEventListener("markerLost", () => {
+          console.log("👋 Marker lost.");
         });
       });
     });
