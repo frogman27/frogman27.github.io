@@ -56,7 +56,7 @@
       let modelPlaced = false;
 
       scene.addEventListener("loaded", () => {
-        const THREE = AFRAME.THREE; // Ensure THREE is ready
+        const THREE = AFRAME.THREE;
 
         document.getElementById("loading").style.display = "none";
 
@@ -69,7 +69,6 @@
             model.setAttribute("scale", "0.5 0.5 0.5");
             model.setAttribute("animation-mixer", "");
 
-            // Delay to ensure world matrix is up to date
             setTimeout(() => {
               const worldPos = new THREE.Vector3();
               const worldQuat = new THREE.Quaternion();
@@ -79,8 +78,12 @@
               marker.object3D.getWorldQuaternion(worldQuat);
               worldEuler.setFromQuaternion(worldQuat);
 
+              const rx = THREE.MathUtils.radToDeg(worldEuler.x);
+              const ry = THREE.MathUtils.radToDeg(worldEuler.y);
+              const rz = THREE.MathUtils.radToDeg(worldEuler.z);
+
               model.setAttribute("position", `${worldPos.x} ${worldPos.y} ${worldPos.z}`);
-              model.setAttribute("rotation", `${THREE.Math.radToDeg(worldEuler.x)} ${THREE.Math.radToDeg(worldEuler.y)} ${THREE.Math.radToDeg(worldEuler.z)}`);
+              model.setAttribute("rotation", `${rx} ${ry} ${rz}`);
 
               container.appendChild(model);
               modelPlaced = true;
