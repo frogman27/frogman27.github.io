@@ -30,10 +30,14 @@
       <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
     </a-assets>
 
+    <!-- Lights -->
     <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
     <a-entity light="type: ambient; color: #888"></a-entity>
 
+    <!-- Marker -->
     <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt"></a-marker>
+
+    <!-- Camera -->
     <a-entity camera></a-entity>
   </a-scene>
 
@@ -56,8 +60,6 @@
             model.setAttribute("scale", "0.5 0.5 0.5");
             model.setAttribute("animation-mixer", "");
 
-            marker.appendChild(model);
-
             model.addEventListener("model-error", (e) => {
               console.error("❌ Model failed to load!", e.detail.src);
             });
@@ -65,29 +67,31 @@
             model.addEventListener("model-loaded", () => {
               setTimeout(() => {
                 try {
+                  // Ensure world transform is ready
+                  marker.object3D.updateMatrixWorld();
+
                   const worldPos = new THREE.Vector3();
                   const worldQuat = new THREE.Quaternion();
                   const worldEuler = new THREE.Euler();
 
-                  marker.object3D.updateMatrixWorld();
                   marker.object3D.getWorldPosition(worldPos);
                   marker.object3D.getWorldQuaternion(worldQuat);
                   worldEuler.setFromQuaternion(worldQuat);
 
-                  // Detach and move to world space
-                  marker.removeChild(model);
+                  // Detach model from marker and add to scene directly
                   scene.appendChild(model);
-
                   model.object3D.position.copy(worldPos);
                   model.object3D.rotation.copy(worldEuler);
 
-                  modelPlaced = true;
                   console.log("📦 Model placed at", worldPos);
+                  modelPlaced = true;
                 } catch (err) {
-                  console.error("⚠️ Error positioning model:", err);
+                  console.error("⚠️ Error placing model:", err);
                 }
               }, 100);
             });
+
+            marker.appendChild(model);
           }
         });
 
