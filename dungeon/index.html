@@ -22,11 +22,30 @@
 <body>
   <div id="container">
     <!-- ONLY the iframe lines change -->
-<iframe id="mapFrame"    name="mapFrame"    src="map.html"></iframe>
-<iframe id="statusFrame" name="statusFrame" src="status.html"></iframe>
-<iframe id="infoFrame"   name="infoFrame"   src="inventory.html"></iframe>
-<!-- command frame is already separate -->
-<iframe id="commandFrame" name="commandFrame" src="command.html"></iframe>
+<iframe id="mapFrame"    name="mapFrame"    src="map.html"
+        onload="frameLoaded('mapFrame')"></iframe>
+
+<iframe id="statusFrame" name="statusFrame" src="status.html"
+        onload="frameLoaded('statusFrame')"></iframe>
+
+<iframe id="infoFrame"   name="infoFrame"   src="inventory.html"
+        onload="frameLoaded('infoFrame')"></iframe>
+
+
+<script>
+  // parent-page code
+  const loadedFrames = new Set();
+  function frameLoaded(name) {
+    loadedFrames.add(name);
+
+    // All three frames are ready → broadcast first update
+    if (loadedFrames.has('mapFrame') &&
+        loadedFrames.has('statusFrame') &&
+        loadedFrames.has('infoFrame')) {
+      if (window.broadcast) window.broadcast();
+    }
+  }
+</script>
 
 </body>
 </html>
