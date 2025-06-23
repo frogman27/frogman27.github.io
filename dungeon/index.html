@@ -1,39 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ASCII Dungeon Crawler</title>
+  <meta charset="UTF-8" />
+  <title>Emoji Dungeon Crawler</title>
   <style>
     body {
       background: #111;
       color: #0f0;
       font-family: monospace;
-      white-space: pre;
-      overflow: hidden;
+      display: flex;
+    }
+    #sidebar {
+      width: 200px;
+      padding: 10px;
+      border-left: 2px solid #0f0;
     }
     #game {
+      white-space: pre;
+      padding: 10px;
       font-size: 16px;
-      line-height: 16px;
+      line-height: 1.1;
     }
     #command {
       width: 100%;
-      font-family: monospace;
       background: #222;
       color: #0f0;
       border: 1px solid #0f0;
       padding: 4px;
+      font-family: monospace;
+      margin-top: 10px;
+    }
+    select {
+      width: 100%;
+      margin-bottom: 10px;
+      background: #222;
+      color: #0f0;
+      border: 1px solid #0f0;
+      font-family: monospace;
     }
   </style>
 </head>
 <body>
-  <div id="game"></div>
-  <input id="command" placeholder="Type a command like 'cast ignis'" />
+  <div>
+    <select id="themeSelect">
+      <option value="fantasy">🧙 Fantasy</option>
+      <option value="scifi">🤖 Sci-Fi</option>
+      <option value="horror">🧟 Dungeon Horror</option>
+    </select>
+    <div id="game"></div>
+  </div>
+  <div id="sidebar">
+    <h3>Legend</h3>
+    <div id="legend"></div>
+    <input id="command" placeholder="e.g. cast ignis" />
+  </div>
 
   <script>
-    const width = 40;
-    const height = 20;
+    const roomSize = { width: 20, height: 10 };
     const gameDisplay = document.getElementById("game");
     const commandInput = document.getElementById("command");
+    const legendDiv = document.getElementById("legend");
+    const themeSelect = document.getElementById("themeSelect");
+
+    let themes = {
+      fantasy: {
+        player: "🧙‍♂️",
+        wall: "🟫",
+        floor: "⬛",
+        exit: "🚪",
+        enemy: "👹",
+        chest: "🎁"
+      },
+      scifi: {
+        player: "👨‍🚀",
+        wall: "🧱",
+        floor: "◼️",
+        exit: "🛸",
+        enemy: "🤖",
+        chest: "📦"
+      },
+      horror: {
+        player: "🧟",
+        wall: "🪦",
+        floor: "⬜",
+        exit: "🕳️",
+        enemy: "🕷️",
+        chest: "🪙"
+      }
+    };
+
+    let currentTheme = "fantasy";
+    let floorMap = {};
+    let currentRoom = '0,0';
 
     let player = {
       x: 1,
@@ -45,151 +103,192 @@
       inventory: [],
       spells: ['ignis'],
       equipment: {},
-      symbol: '@',
+      room: '0,0',
     };
 
-    let dungeon = [];
-    let enemies = [];
-    let floor = 1;
-
-    const tiles = {
-      wall: '#',
-      floor: '.',
-      hidden: ' ',
-      enemy: 'e',
-    };
-
-    function generateDungeon() {
-      dungeon = [];
-      enemies = [];
-
-      for (let y = 0; y < height; y++) {
-        dungeon[y] = [];
-        for (let x = 0; x < width; x++) {
-          if (x === 0 || y === 0 || x === width - 1 || y === height - 1 || Math.random() < 0.1) {
-            dungeon[y][x] = tiles.wall;
-          } else {
-            dungeon[y][x] = tiles.floor;
-          }
-        }
-      }
-
-      // Add some enemies
-      for (let i = 0; i < 5 + floor; i++) {
-        let ex = Math.floor(Math.random() * (width - 2)) + 1;
-        let ey = Math.floor(Math.random() * (height - 2)) + 1;
-        if (dungeon[ey][ex] === tiles.floor) {
-          enemies.push({ x: ex, y: ey, hp: 5 + floor * 2 });
-        }
-      }
-
-      // Hidden room
-      if (Math.random() < 0.5) {
-        const hx = Math.floor(Math.random() * (width - 10)) + 5;
-        const hy = Math.floor(Math.random() * (height - 6)) + 3;
-        for (let y = hy; y < hy + 3; y++) {
-          for (let x = hx; x < hx + 5; x++) {
-            dungeon[y][x] = tiles.floor;
-          }
-        }
-      }
-
-      player.x = 1;
-      player.y = 1;
+    function updateLegend() {
+      const t = themes[currentTheme];
+      legendDiv.innerHTML = `
+        ${t.player} = Player<br>
+        ${t.enemy} = Enemy<br>
+        ${t.wall} = Wall<br>
+        ${t.floor} = Floor<br>
+        ${t.exit} = Exit<br>
+        ${t.chest} = Chest
+      `;
     }
 
-    function render() {
+    themeSelect.addEventListener("change", () => {
+      currentTheme = themeSelect.value;
+      updateLegend();
+      renderRoom();
+    });
+
+    function createRoom(roomKey) {
+      const room = {
+        layout: [],
+        enemies: [],
+        chests: [],
+        exits: {}
+      };
+
+      for (let y = 0; y < roomSize.height; y++) {
+        room.layout[y] = [];
+        for (let x = 0; x < roomSize.width; x++) {
+          room.layout[y][x] = (y === 0 || x === 0 || y === roomSize.height - 1 || x === roomSize.width - 1) ? "wall" : "floor";
+        }
+      }
+
+      // Add exits
+      const directions = ['north', 'south', 'east', 'west'];
+      directions.forEach(dir => {
+        if (Math.random() < 0.5 || roomKey === '0,0') {
+          let rx = 0, ry = 0, dest = '';
+          switch (dir) {
+            case 'north': ry = 0; rx = Math.floor(roomSize.width / 2); dest = `${getCoords(roomKey).x},${getCoords(roomKey).y - 1}`; break;
+            case 'south': ry = roomSize.height - 1; rx = Math.floor(roomSize.width / 2); dest = `${getCoords(roomKey).x},${getCoords(roomKey).y + 1}`; break;
+            case 'west':  rx = 0; ry = Math.floor(roomSize.height / 2); dest = `${getCoords(roomKey).x - 1},${getCoords(roomKey).y}`; break;
+            case 'east':  rx = roomSize.width - 1; ry = Math.floor(roomSize.height / 2); dest = `${getCoords(roomKey).x + 1},${getCoords(roomKey).y}`; break;
+          }
+          room.layout[ry][rx] = "exit";
+          room.exits[`${rx},${ry}`] = dest;
+        }
+      });
+
+      // Add chest
+      if (Math.random() < 0.4) {
+        const cx = rand(2, roomSize.width - 3);
+        const cy = rand(2, roomSize.height - 3);
+        room.layout[cy][cx] = "chest";
+        room.chests.push({ x: cx, y: cy, contents: randomLoot() });
+      }
+
+      // Add enemies
+      for (let i = 0; i < 1 + Math.floor(Math.random() * 3); i++) {
+        let ex = rand(1, roomSize.width - 2);
+        let ey = rand(1, roomSize.height - 2);
+        if (room.layout[ey][ex] === "floor") {
+          room.enemies.push({ x: ex, y: ey, hp: 5 });
+        }
+      }
+
+      floorMap[roomKey] = room;
+    }
+
+    function getCoords(key) {
+      const [x, y] = key.split(',').map(Number);
+      return { x, y };
+    }
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function renderRoom() {
+      const theme = themes[currentTheme];
+      const room = floorMap[player.room];
       let output = '';
 
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
+      for (let y = 0; y < roomSize.height; y++) {
+        for (let x = 0; x < roomSize.width; x++) {
           if (player.x === x && player.y === y) {
-            output += player.symbol;
-          } else if (enemies.find(e => e.x === x && e.y === y)) {
-            output += tiles.enemy;
+            output += theme.player;
+          } else if (room.enemies.find(e => e.x === x && e.y === y)) {
+            output += theme.enemy;
           } else {
-            output += dungeon[y][x];
+            const tile = room.layout[y][x];
+            output += theme[tile] || '?';
           }
         }
         output += '\n';
       }
 
-      output += `HP: ${player.hp}/${player.maxHp} | LVL: ${player.level} | EXP: ${player.exp} | Floor: ${floor}`;
+      output += `HP: ${player.hp}/${player.maxHp}  LVL: ${player.level}  EXP: ${player.exp}`;
       gameDisplay.textContent = output;
+    }
+
+    function movePlayer(dx, dy) {
+      const room = floorMap[player.room];
+      const nx = player.x + dx;
+      const ny = player.y + dy;
+      const tile = room.layout[ny]?.[nx];
+
+      if (!tile) return;
+
+      if (tile === "exit") {
+        const dest = room.exits[`${nx},${ny}`];
+        if (!floorMap[dest]) createRoom(dest);
+        player.room = dest;
+        player.x = roomSize.width - 2;
+        player.y = roomSize.height - 2;
+        renderRoom();
+        return;
+      }
+
+      const chest = room.chests.find(c => c.x === nx && c.y === ny);
+      if (chest) {
+        alert(`You found: ${chest.contents}`);
+        if (chest.contents.startsWith("spell: ")) {
+          const spell = chest.contents.replace("spell: ", "");
+          if (!player.spells.includes(spell)) player.spells.push(spell);
+        }
+        room.layout[ny][nx] = "floor";
+        room.chests = room.chests.filter(c => c !== chest);
+      }
+
+      const enemy = room.enemies.find(e => e.x === nx && e.y === ny);
+      if (enemy) {
+        enemy.hp -= 5;
+        player.hp -= 2;
+        if (enemy.hp <= 0) {
+          room.enemies = room.enemies.filter(e => e !== enemy);
+          gainExp(5);
+        }
+      } else if (tile !== "wall") {
+        player.x = nx;
+        player.y = ny;
+      }
+
+      if (player.hp <= 0) {
+        alert("You died!");
+        location.reload();
+      }
+
+      renderRoom();
     }
 
     function gainExp(amount) {
       player.exp += amount;
       if (player.exp >= player.level * 10) {
-        player.exp -= player.level * 10;
+        player.exp = 0;
         player.level++;
         player.maxHp += 5;
         player.hp = player.maxHp;
-        log("You leveled up!");
+        alert("Level up!");
       }
-    }
-
-    function move(dx, dy) {
-      let nx = player.x + dx;
-      let ny = player.y + dy;
-      if (dungeon[ny][nx] === tiles.wall) return;
-
-      const enemy = enemies.find(e => e.x === nx && e.y === ny);
-      if (enemy) {
-        enemy.hp -= 5;
-        log("You strike the enemy!");
-        if (enemy.hp <= 0) {
-          enemies = enemies.filter(e => e !== enemy);
-          gainExp(5 + floor);
-          log("Enemy defeated!");
-        } else {
-          player.hp -= 2 + floor;
-          if (player.hp <= 0) {
-            alert("You have died!");
-            location.reload();
-          }
-        }
-      } else {
-        player.x = nx;
-        player.y = ny;
-      }
-    }
-
-    function log(msg) {
-      console.log(msg);
     }
 
     function handleCommand(cmd) {
-      const parts = cmd.trim().toLowerCase().split(' ');
-      const action = parts[0];
-      const arg = parts[1];
-
-      if (action === 'cast') {
+      const [verb, arg] = cmd.trim().toLowerCase().split(" ");
+      if (verb === "cast") {
         if (!player.spells.includes(arg)) {
-          log("You don't know that spell.");
-        } else if (arg === 'ignis') {
-          enemies.forEach(e => {
-            if (Math.abs(e.x - player.x) <= 2 && Math.abs(e.y - player.y) <= 2) {
+          alert("Unknown spell.");
+        } else if (arg === "ignis") {
+          const room = floorMap[player.room];
+          room.enemies.forEach(e => {
+            if (Math.abs(e.x - player.x) <= 1 && Math.abs(e.y - player.y) <= 1) {
               e.hp -= 10;
             }
           });
-          log("You cast IGNIS (fire burst)!");
+          alert("🔥 You cast IGNIS!");
         }
-      } else if (action === 'descend') {
-        floor++;
-        generateDungeon();
       }
-      render();
+      renderRoom();
     }
 
-    function handleKey(e) {
-      switch (e.key) {
-        case "ArrowUp": move(0, -1); break;
-        case "ArrowDown": move(0, 1); break;
-        case "ArrowLeft": move(-1, 0); break;
-        case "ArrowRight": move(1, 0); break;
-      }
-      render();
+    function randomLoot() {
+      const loot = ["potion", "gold", "spell: lux", "spell: terra", "armor", "weapon"];
+      return loot[Math.floor(Math.random() * loot.length)];
     }
 
     commandInput.addEventListener("keydown", e => {
@@ -200,11 +299,17 @@
     });
 
     document.addEventListener("keydown", e => {
-      if (document.activeElement !== commandInput) handleKey(e);
+      if (document.activeElement === commandInput) return;
+      if (e.key === "ArrowUp") movePlayer(0, -1);
+      if (e.key === "ArrowDown") movePlayer(0, 1);
+      if (e.key === "ArrowLeft") movePlayer(-1, 0);
+      if (e.key === "ArrowRight") movePlayer(1, 0);
     });
 
-    generateDungeon();
-    render();
+    // Initial setup
+    createRoom(currentRoom);
+    updateLegend();
+    renderRoom();
   </script>
 </body>
 </html>
