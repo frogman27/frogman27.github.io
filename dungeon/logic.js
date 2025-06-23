@@ -40,14 +40,16 @@ function createRoom(key){
 createRoom("0,0");
 
 // ===== BROADCAST TO FRAMES =====
-function broadcast(){
-  const mapWin=parent.frames["mapFrame"]?.window;
-  const statusWin=parent.frames["statusFrame"]?.window;
-  const infoWin=parent.frames["infoFrame"]?.window;
-  mapWin?.updateMap?.(window.gameState);
+function broadcast () {
+  const mapWin    = safeFrame("mapFrame")?.window;
+  const statusWin = safeFrame("statusFrame")?.window;
+  const infoWin   = safeFrame("infoFrame")?.window;
+
+  mapWin   ?.updateMap   ?. (window.gameState);
   statusWin?.updateStatus?.(window.gameState);
-  infoWin?.updateInfo?.(window.gameState);
+  infoWin  ?.updateInfo  ?. (window.gameState);
 }
+
 
 // ===== FRAME-SPECIFIC SETUP =====
 if(document.getElementById("map")){
@@ -115,6 +117,13 @@ function handleCommand(cmd){
 if(document.getElementById("command")){
   document.getElementById("command").addEventListener("keydown",e=>{if(e.key==="Enter"){handleCommand(e.target.value);e.target.value="";}});
 }
+
+function safeFrame(name) {
+  try {                      // <-- catch cross-origin complaints
+    return window.parent && window.parent.frames[name];
+  } catch (e) { return null; }
+}
+
 
 // initial broadcast
 broadcast();
