@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ASCII Dungeon Crawler</title>
+  <style>
+    body {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      white-space: pre;
+      overflow: hidden;
+    }
+    #game {
+      font-size: 16px;
+      line-height: 16px;
+    }
+    #command {
+      width: 100%;
+      font-family: monospace;
+      background: #222;
+      color: #0f0;
+      border: 1px solid #0f0;
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <input id="command" placeholder="Type a command like 'cast ignis'" />
+
+  <script>
+    const width = 40;
+    const height = 20;
+    const gameDisplay = document.getElementById("game");
+    const commandInput = document.getElementById("command");
+
+    let player = {
+      x: 1,
+      y: 1,
+      hp: 20,
+      maxHp: 20,
+      exp: 0,
+      level: 1,
+      inventory: [],
+      spells: ['ignis'],
+      equipment: {},
+      symbol: '@',
+    };
+
+    let dungeon = [];
+    let enemies = [];
+    let floor = 1;
+
+    const tiles = {
+      wall: '#',
+      floor: '.',
+      hidden: ' ',
+      enemy: 'e',
+    };
+
+    function generateDungeon() {
+      dungeon = [];
+      enemies = [];
+
+      for (let y = 0; y < height; y++) {
+        dungeon[y] = [];
+        for (let x = 0; x < width; x++) {
+          if (x === 0 || y === 0 || x === width - 1 || y === height - 1 || Math.random() < 0.1) {
+            dungeon[y][x] = tiles.wall;
+          } else {
+            dungeon[y][x] = tiles.floor;
+          }
+        }
+      }
+
+      // Add some enemies
+      for (let i = 0; i < 5 + floor; i++) {
+        let ex = Math.floor(Math.random() * (width - 2)) + 1;
+        let ey = Math.floor(Math.random() * (height - 2)) + 1;
+        if (dungeon[ey][ex] === tiles.floor) {
+          enemies.push({ x: ex, y: ey, hp: 5 + floor * 2 });
+        }
+      }
+
+      // Hidden room
+      if (Math.random() < 0.5) {
+        const hx = Math.floor(Math.random() * (width - 10)) + 5;
+        const hy = Math.floor(Math.random() * (height - 6)) + 3;
+        for (let y = hy; y < hy + 3; y++) {
+          for (let x = hx; x < hx + 5; x++) {
+            dungeon[y][x] = tiles.floor;
+          }
+        }
+      }
+
+      player.x = 1;
+      player.y = 1;
+    }
+
+    function render() {
+      let output = '';
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (player.x === x && player.y === y) {
+            output += player.symbol;
+          } else if (enemies.find(e => e.x === x && e.y === y)) {
+            output += tiles.enemy;
+          } else {
+            output += dungeon[y][x];
+          }
+        }
+        output += '\n';
+      }
+
+      output += `HP: ${player.hp}/${player.maxHp} | LVL: ${player.level} | EXP: ${player.exp} | Floor: ${floor}`;
+      gameDisplay.textContent = output;
+    }
+
+    function gainExp(amount) {
+      player.exp += amount;
+      if (player.exp >= player.level * 10) {
+        player.exp -= player.level * 10;
+        player.level++;
+        player.maxHp += 5;
+        player.hp = player.maxHp;
+        log("You leveled up!");
+      }
+    }
+
+    function move(dx, dy) {
+      let nx = player.x + dx;
+      let ny = player.y + dy;
+      if (dungeon[ny][nx] === tiles.wall) return;
+
+      const enemy = enemies.find(e => e.x === nx && e.y === ny);
+      if (enemy) {
+        enemy.hp -= 5;
+        log("You strike the enemy!");
+        if (enemy.hp <= 0) {
+          enemies = enemies.filter(e => e !== enemy);
+          gainExp(5 + floor);
+          log("Enemy defeated!");
+        } else {
+          player.hp -= 2 + floor;
+          if (player.hp <= 0) {
+            alert("You have died!");
+            location.reload();
+          }
+        }
+      } else {
+        player.x = nx;
+        player.y = ny;
+      }
+    }
+
+    function log(msg) {
+      console.log(msg);
+    }
+
+    function handleCommand(cmd) {
+      const parts = cmd.trim().toLowerCase().split(' ');
+      const action = parts[0];
+      const arg = parts[1];
+
+      if (action === 'cast') {
+        if (!player.spells.includes(arg)) {
+          log("You don't know that spell.");
+        } else if (arg === 'ignis') {
+          enemies.forEach(e => {
+            if (Math.abs(e.x - player.x) <= 2 && Math.abs(e.y - player.y) <= 2) {
+              e.hp -= 10;
+            }
+          });
+          log("You cast IGNIS (fire burst)!");
+        }
+      } else if (action === 'descend') {
+        floor++;
+        generateDungeon();
+      }
+      render();
+    }
+
+    function handleKey(e) {
+      switch (e.key) {
+        case "ArrowUp": move(0, -1); break;
+        case "ArrowDown": move(0, 1); break;
+        case "ArrowLeft": move(-1, 0); break;
+        case "ArrowRight": move(1, 0); break;
+      }
+      render();
+    }
+
+    commandInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        handleCommand(commandInput.value);
+        commandInput.value = '';
+      }
+    });
+
+    document.addEventListener("keydown", e => {
+      if (document.activeElement !== commandInput) handleKey(e);
+    });
+
+    generateDungeon();
+    render();
+  </script>
+</body>
+</html>
