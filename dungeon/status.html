@@ -1,6 +1,9 @@
+
+<!DOCTYPE html><html><body style="margin:0;background:#222;color:#0f0;font-family:monospace;">
+<pre id="status">Log...</pre>
 <script>
-  window.updateStatus = state =>
-    document.getElementById("status").textContent =
-      state.log.slice(-12).join("\n");
-  parent.frameLoaded('statusFrame');
-</script>
+window.updateStatus=function(state){
+  document.getElementById('status').textContent=state.log.slice(-15).join('\n');
+};
+parent.frameLoaded('statusFrame');
+</script></body></html>

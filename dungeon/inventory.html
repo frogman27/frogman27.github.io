@@ -1,13 +1,14 @@
+
+<!DOCTYPE html><html><body style="margin:0;background:#111;color:#0f0;font-family:monospace;overflow-y:auto;">
+<div id="equipment"></div><hr style="border:1px solid #0f0">
+<div id="spells"></div><hr style="border:1px solid #0f0">
+<div id="inventory"></div>
 <script>
-  window.updateInfo = s => {
-    document.getElementById("equipment").textContent =
-      `Melee: ${s.player.weapon}\nRanged: ${s.player.ranged}\nArmor: ${s.player.armor}`;
-    document.getElementById("spells").textContent   = s.player.spells.join("\n");
-    document.getElementById("inventory").textContent=
-      s.player.inventory.filter(i =>
-        !i.startsWith("spell:") &&
-        ![s.player.weapon, s.player.ranged, s.player.armor].includes(i)
-      ).join("\n");
-  };
-  parent.frameLoaded('infoFrame');
+window.updateInfo=function(s){
+  document.getElementById('equipment').textContent=`Melee: ${s.player.weapon}\nRanged: ${s.player.ranged}\nArmor: ${s.player.armor}`;
+  document.getElementById('spells').textContent=s.player.spells.join('\n');
+  document.getElementById('inventory').textContent=s.player.inventory.filter(i=>!i.startsWith('spell:')&&![''+s.player.weapon, s.player.ranged, s.player.armor].includes(i)).join('\n');
+};
+parent.frameLoaded('infoFrame');
 </script>
+</body></html>

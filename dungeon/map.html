@@ -1,27 +1,22 @@
-<!DOCTYPE html>
-<html>
-<body style="background:#111;color:#0f0;font-family:monospace;">
-  <pre id="map">Loading map…</pre>
 
-  <script>
-    // Define the callback the parent will call
-    window.updateMap = function (state) {
-      const t = state.themes[state.theme];
-      const room = state.rooms[state.player.room];
-      let out = "";
-      for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 20; x++) {
-          out += (state.player.x === x && state.player.y === y)
-                 ? t.player : t[ room.layout[y][x] ];
-        }
-        out += "\n";
-      }
-      out += `HP:${state.player.hp}/${state.player.maxHp}  LVL:${state.player.level}  EXP:${state.player.exp}`;
-      document.getElementById("map").textContent = out;
-    };
-
-    // Tell parent we’re ready (parent.frameLoaded is in index.html)
-    parent.frameLoaded('mapFrame');
-  </script>
-</body>
-</html>
+<!DOCTYPE html><html><body style="margin:0;background:#111;color:#0f0;font-family:monospace;">
+<pre id="map">Loading map…</pre>
+<script>
+window.updateMap=function(state){
+  const t=state.themes[state.theme];
+  const room=state.rooms[state.player.room];
+  let out='';
+  for(let y=0;y<state.ROOM_H;y++){
+    for(let x=0;x<state.ROOM_W;x++){
+      let char=t[room.layout[y][x]];
+      if(state.player.x===x&&state.player.y===y) char=t.player;
+      else if(room.enemies.find(e=>e.x===x&&e.y===y)) char=t.enemy;
+      out+=char;
+    }
+    out+='\n';
+  }
+  out+=`HP:${state.player.hp}/${state.player.maxHp} LVL:${state.player.level} EXP:${state.player.exp}`;
+  document.getElementById('map').textContent=out;
+};
+parent.frameLoaded('mapFrame');
+</script></body></html>
