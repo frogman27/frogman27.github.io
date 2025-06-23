@@ -1,1 +1,13 @@
-<!DOCTYPE html><html><body style='background:#111;color:#0f0;font-family:monospace;'><div id='equipment'></div><div id='spells'></div><div id='inventory'></div><script src='logic.js'></script></body></html>
+<script>
+  window.updateInfo = s => {
+    document.getElementById("equipment").textContent =
+      `Melee: ${s.player.weapon}\nRanged: ${s.player.ranged}\nArmor: ${s.player.armor}`;
+    document.getElementById("spells").textContent   = s.player.spells.join("\n");
+    document.getElementById("inventory").textContent=
+      s.player.inventory.filter(i =>
+        !i.startsWith("spell:") &&
+        ![s.player.weapon, s.player.ranged, s.player.armor].includes(i)
+      ).join("\n");
+  };
+  parent.frameLoaded('infoFrame');
+</script>
