@@ -125,5 +125,3 @@ function safeFrame(name) {
 }
 
 
-// initial broadcast
-broadcast();
