@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>AR Marker Model Viewer</title>
@@ -7,17 +7,26 @@
   <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/3.4.7/aframe/build/aframe-ar.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #loading { 
-      position: absolute; top: 10px; left: 10px; 
-      color: white; background: rgba(0,0,0,0.7); 
-      padding: 5px; z-index: 10; 
+    #loading {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.7);
+      padding: 5px;
+      z-index: 10;
+      font-family: sans-serif;
     }
   </style>
 </head>
 <body>
   <div id="loading">Loading AR Scene...</div>
 
-  <a-scene embedded arjs>
+  <a-scene
+    embedded
+    arjs="sourceType: webcam; debugUIEnabled: false;"
+    vr-mode-ui="enabled: false"
+  >
     <a-assets></a-assets>
     <a-entity camera></a-entity>
   </a-scene>
@@ -28,21 +37,21 @@
         const res = await fetch('models.json');
         const models = await res.json();
         models.forEach(entry => {
-          // Accept both camelCase and expected property names
-          if (entry.patternUrl) entry.marker = entry.patternUrl;
-          if (entry.modelUrl) entry.glb = entry.modelUrl;
-          if (entry.audioUrl) entry.audio = entry.audioUrl;
+          // Normalize keys
+          entry.marker = entry.patternUrl || entry.marker;
+          entry.glb = entry.modelUrl || entry.glb;
+          entry.audio = entry.audioUrl || entry.audio;
 
-          // Validate required fields
+          // Validate fields
           if (!entry.name || !entry.marker || !entry.glb) {
-            console.warn('❌ Skipping invalid or incomplete model entry:', entry);
+            console.warn("❌ Skipping invalid or incomplete model entry:", entry);
             return;
           }
 
           loadModel(entry);
         });
       } catch (err) {
-        console.error('Error loading models.json:', err);
+        console.error('❌ Failed to load models.json:', err);
       }
     }
 
@@ -50,15 +59,15 @@
       const assets = document.querySelector('a-assets');
       const scene = document.querySelector('a-scene');
 
-      // GLB model asset
+      // GLB model
       const modelAsset = document.createElement('a-asset-item');
       modelAsset.setAttribute('id', `model-${entry.name}`);
       modelAsset.setAttribute('src', entry.glb);
       modelAsset.onerror = () => console.warn(`⚠️ Failed to load model: ${entry.glb}`);
       assets.appendChild(modelAsset);
 
-      // Optional audio asset
-      let audioAsset;
+      // Optional audio
+      let audioAsset = null;
       if (entry.audio) {
         audioAsset = document.createElement('audio');
         audioAsset.setAttribute('id', `audio-${entry.name}`);
@@ -73,7 +82,7 @@
       marker.setAttribute('url', entry.marker);
       marker.setAttribute('id', `marker-${entry.name}`);
 
-      // Model
+      // 3D Model
       const modelEntity = document.createElement('a-entity');
       modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
       modelEntity.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
@@ -82,14 +91,16 @@
 
       // Audio control
       marker.addEventListener('markerFound', () => {
+        console.log(`📌 Marker found: ${entry.name}`);
         const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) {
           audio.currentTime = 0;
-          audio.play().catch(err => console.warn('Audio playback failed:', err));
+          audio.play().catch(err => console.warn('⚠️ Audio playback failed:', err));
         }
       });
 
       marker.addEventListener('markerLost', () => {
+        console.log(`👋 Marker lost: ${entry.name}`);
         const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) audio.pause();
       });
