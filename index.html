@@ -46,7 +46,6 @@
 </head>
 <body>
 
-  <!-- Accessible zoom slider -->
   <label for="zoomSlider" id="zoomLabel" style="position:absolute;left:-9999px;">Zoom level</label>
   <input
     type="range"
@@ -67,8 +66,35 @@
     renderer="logarithmicDepthBuffer: true;"
   >
     <a-assets></a-assets>
-    <a-entity camera></a-entity>
+
+    <!-- Camera with custom component for FOV control -->
+    <a-entity id="mainCamera" camera fov-adjuster></a-entity>
   </a-scene>
+
+  <script>
+    AFRAME.registerComponent('fov-adjuster', {
+      init: function () {
+        const zoomSlider = document.getElementById('zoomSlider');
+        const camera = this.el.getObject3D('camera');
+
+        if (!camera || !camera.isPerspectiveCamera) {
+          console.warn('Camera not ready or not perspective.');
+          return;
+        }
+
+        const applyFOV = () => {
+          camera.fov = parseFloat(zoomSlider.value);
+          camera.updateProjectionMatrix();
+        };
+
+        // Initial value
+        applyFOV();
+
+        // Update on slider input
+        zoomSlider.addEventListener('input', applyFOV);
+      }
+    });
+  </script>
 
   <script>
     async function loadModelList() {
@@ -143,25 +169,6 @@
     window.addEventListener('DOMContentLoaded', () => {
       loadModelList().then(() => {
         document.getElementById('loading').style.display = 'none';
-      });
-
-      const scene = document.querySelector('a-scene');
-      const zoomSlider = document.getElementById('zoomSlider');
-
-      // Attach FOV logic once rendering starts (camera is set up)
-      scene.addEventListener('renderstart', () => {
-        const arCamera = scene.camera;
-        if (arCamera && arCamera.isPerspectiveCamera) {
-          arCamera.fov = parseFloat(zoomSlider.value);
-          arCamera.updateProjectionMatrix();
-
-          zoomSlider.addEventListener('input', (e) => {
-            arCamera.fov = parseFloat(e.target.value);
-            arCamera.updateProjectionMatrix();
-          });
-        } else {
-          console.warn("AR.js camera not ready or not perspective.");
-        }
       });
     });
   </script>
