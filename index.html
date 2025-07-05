@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#000000" />
   <title>AR Marker Model Viewer</title>
 
   <!-- A-Frame -->
@@ -39,9 +39,7 @@
     }
 
     * {
-      -webkit-box-sizing: border-box;
       box-sizing: border-box;
-      -webkit-user-select: none;
       user-select: none;
     }
   </style>
@@ -49,9 +47,16 @@
 <body>
 
   <label for="zoomSlider" id="zoomLabel" style="position:absolute;left:-9999px;">Zoom level</label>
-<input type="range" id="zoomSlider" min="40" max="120" value="80" step="1"
-  aria-labelledby="zoomLabel"
-  style="position: absolute; bottom: 10px; left: 10px; z-index: 20;" />
+  <input
+    type="range"
+    id="zoomSlider"
+    min="40"
+    max="120"
+    value="80"
+    step="1"
+    aria-labelledby="zoomLabel"
+  />
+
   <div id="loading">Loading AR Scene...</div>
 
   <a-scene
@@ -93,14 +98,12 @@
       const scene = document.querySelector('a-scene');
       const assets = document.querySelector('a-assets');
 
-      // Add model to assets
       const modelAsset = document.createElement('a-asset-item');
       modelAsset.setAttribute('id', `model-${entry.name}`);
       modelAsset.setAttribute('src', entry.glb);
       modelAsset.onerror = () => console.warn(`⚠️ Failed to load model: ${entry.glb}`);
       assets.appendChild(modelAsset);
 
-      // Add audio (optional)
       if (entry.audio) {
         const audioAsset = document.createElement('audio');
         audioAsset.setAttribute('id', `audio-${entry.name}`);
@@ -109,20 +112,17 @@
         assets.appendChild(audioAsset);
       }
 
-      // Create marker
       const marker = document.createElement('a-marker');
       marker.setAttribute('type', 'pattern');
       marker.setAttribute('url', entry.marker);
       marker.setAttribute('id', `marker-${entry.name}`);
 
-      // Add model to marker
       const modelEntity = document.createElement('a-entity');
       modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
       modelEntity.setAttribute('scale', entry.scale);
       modelEntity.setAttribute('animation-mixer', '');
       marker.appendChild(modelEntity);
 
-      // Audio control
       marker.addEventListener('markerFound', () => {
         const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) {
@@ -140,35 +140,29 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      const zoomSlider = document.getElementById('zoomSlider');
+      const sceneEl = document.querySelector('a-scene');
+
       loadModelList().then(() => {
         document.getElementById('loading').style.display = 'none';
       });
 
- window.addEventListener('DOMContentLoaded', () => {
-  loadModelList().then(() => {
-    document.getElementById('loading').style.display = 'none';
-  });
+      sceneEl.addEventListener('renderstart', () => {
+        const arCamera = sceneEl.camera;
+        if (arCamera && arCamera.isPerspectiveCamera) {
+          arCamera.fov = parseFloat(zoomSlider.value);
+          arCamera.updateProjectionMatrix();
 
-  const zoomSlider = document.getElementById('zoomSlider');
-
-  // Wait until the scene and AR.js are ready
-  const sceneEl = document.querySelector('a-scene');
-
-  sceneEl.addEventListener('renderstart', () => {
-    const arCamera = sceneEl.camera; // Get AR.js-managed THREE.Camera
-    if (arCamera && arCamera.isPerspectiveCamera) {
-      arCamera.fov = parseFloat(zoomSlider.value);
-      arCamera.updateProjectionMatrix();
-
-      zoomSlider.addEventListener('input', (e) => {
-        const fov = parseFloat(e.target.value);
-        arCamera.fov = fov;
-        arCamera.updateProjectionMatrix();
+          zoomSlider.addEventListener('input', (e) => {
+            const fov = parseFloat(e.target.value);
+            arCamera.fov = fov;
+            arCamera.updateProjectionMatrix();
+          });
+        } else {
+          console.warn('🚫 No AR camera found or camera is not perspective');
+        }
       });
-    }
-  });
-});
-});
-</script>
+    });
+  </script>
 </body>
 </html>
