@@ -7,21 +7,17 @@
   <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/3.4.7/aframe/build/aframe-ar.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #loading {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: white;
-      background: rgba(0,0,0,0.7);
-      padding: 5px;
-      z-index: 10;
+    #loading { 
+      position: absolute; top: 10px; left: 10px; 
+      color: white; background: rgba(0,0,0,0.7); 
+      padding: 5px; z-index: 10; 
     }
   </style>
 </head>
 <body>
   <div id="loading">Loading AR Scene...</div>
 
-  <a-scene embedded arjs="sourceType: webcam;">
+  <a-scene embedded arjs>
     <a-assets></a-assets>
     <a-entity camera></a-entity>
   </a-scene>
@@ -30,25 +26,23 @@
     async function loadModelList() {
       try {
         const res = await fetch('models.json');
-        if (!res.ok) throw new Error(`Failed to fetch models.json: ${res.status}`);
         const models = await res.json();
-
         models.forEach(entry => {
-          if (
-            typeof entry !== 'object' ||
-            !entry.name ||
-            !entry.marker ||
-            !entry.glb
-          ) {
+          // Accept both camelCase and expected property names
+          if (entry.patternUrl) entry.marker = entry.patternUrl;
+          if (entry.modelUrl) entry.glb = entry.modelUrl;
+          if (entry.audioUrl) entry.audio = entry.audioUrl;
+
+          // Validate required fields
+          if (!entry.name || !entry.marker || !entry.glb) {
             console.warn('❌ Skipping invalid or incomplete model entry:', entry);
             return;
           }
+
           loadModel(entry);
         });
       } catch (err) {
-        console.error('⚠️ Error loading models.json:', err);
-      } finally {
-        document.getElementById('loading').style.display = 'none';
+        console.error('Error loading models.json:', err);
       }
     }
 
@@ -56,52 +50,58 @@
       const assets = document.querySelector('a-assets');
       const scene = document.querySelector('a-scene');
 
-      // --- Add model to assets ---
+      // GLB model asset
       const modelAsset = document.createElement('a-asset-item');
       modelAsset.setAttribute('id', `model-${entry.name}`);
       modelAsset.setAttribute('src', entry.glb);
+      modelAsset.onerror = () => console.warn(`⚠️ Failed to load model: ${entry.glb}`);
       assets.appendChild(modelAsset);
 
-      // --- Add audio if present ---
-      let hasAudio = false;
+      // Optional audio asset
+      let audioAsset;
       if (entry.audio) {
-        const audioAsset = document.createElement('audio');
+        audioAsset = document.createElement('audio');
         audioAsset.setAttribute('id', `audio-${entry.name}`);
         audioAsset.setAttribute('src', entry.audio);
+        audioAsset.onerror = () => console.warn(`⚠️ Failed to load audio: ${entry.audio}`);
         assets.appendChild(audioAsset);
-        hasAudio = true;
       }
 
-      // --- Marker setup ---
+      // Marker
       const marker = document.createElement('a-marker');
       marker.setAttribute('type', 'pattern');
       marker.setAttribute('url', entry.marker);
       marker.setAttribute('id', `marker-${entry.name}`);
 
-      // --- 3D model setup ---
+      // Model
       const modelEntity = document.createElement('a-entity');
       modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
       modelEntity.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
       modelEntity.setAttribute('animation-mixer', '');
       marker.appendChild(modelEntity);
 
-      // --- Audio behavior ---
-      if (hasAudio) {
-        marker.addEventListener('markerFound', () => {
-          const audio = document.getElementById(`audio-${entry.name}`);
-          if (audio) audio.play().catch(err => console.warn('Audio play failed:', err));
-        });
+      // Audio control
+      marker.addEventListener('markerFound', () => {
+        const audio = document.getElementById(`audio-${entry.name}`);
+        if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(err => console.warn('Audio playback failed:', err));
+        }
+      });
 
-        marker.addEventListener('markerLost', () => {
-          const audio = document.getElementById(`audio-${entry.name}`);
-          if (audio) audio.pause();
-        });
-      }
+      marker.addEventListener('markerLost', () => {
+        const audio = document.getElementById(`audio-${entry.name}`);
+        if (audio) audio.pause();
+      });
 
       scene.appendChild(marker);
     }
 
-    window.addEventListener('DOMContentLoaded', loadModelList);
+    window.addEventListener('DOMContentLoaded', () => {
+      loadModelList().then(() => {
+        document.getElementById('loading').style.display = 'none';
+      });
+    });
   </script>
 </body>
 </html>
