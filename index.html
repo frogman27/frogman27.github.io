@@ -39,15 +39,14 @@
     }
 
     * {
-      -webkit-box-sizing: border-box;
       box-sizing: border-box;
-      -webkit-user-select: none;
       user-select: none;
     }
   </style>
 </head>
 <body>
 
+  <!-- Accessible zoom slider -->
   <label for="zoomSlider" id="zoomLabel" style="position:absolute;left:-9999px;">Zoom level</label>
   <input
     type="range"
@@ -68,7 +67,6 @@
     renderer="logarithmicDepthBuffer: true;"
   >
     <a-assets></a-assets>
-    <!-- AR.js replaces this with its own camera -->
     <a-entity camera></a-entity>
   </a-scene>
 
@@ -147,27 +145,23 @@
         document.getElementById('loading').style.display = 'none';
       });
 
+      const scene = document.querySelector('a-scene');
       const zoomSlider = document.getElementById('zoomSlider');
-      const sceneEl = document.querySelector('a-scene');
 
-      // Once scene starts rendering (ensures AR.js camera is ready)
-      sceneEl.addEventListener('renderstart', () => {
-        const threeCamera = sceneEl.camera;
-        if (!threeCamera) {
-          console.warn('❌ Unable to access scene camera');
-          return;
+      // Attach FOV logic once rendering starts (camera is set up)
+      scene.addEventListener('renderstart', () => {
+        const arCamera = scene.camera;
+        if (arCamera && arCamera.isPerspectiveCamera) {
+          arCamera.fov = parseFloat(zoomSlider.value);
+          arCamera.updateProjectionMatrix();
+
+          zoomSlider.addEventListener('input', (e) => {
+            arCamera.fov = parseFloat(e.target.value);
+            arCamera.updateProjectionMatrix();
+          });
+        } else {
+          console.warn("AR.js camera not ready or not perspective.");
         }
-
-        // Set initial FOV
-        threeCamera.fov = parseFloat(zoomSlider.value);
-        threeCamera.updateProjectionMatrix();
-
-        // Attach zoom handler
-        zoomSlider.addEventListener('input', (e) => {
-          const fov = parseFloat(e.target.value);
-          threeCamera.fov = fov;
-          threeCamera.updateProjectionMatrix();
-        });
       });
     });
   </script>
