@@ -1,55 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000">
+  <meta charset="utf-8" />
   <title>AR Marker Model Viewer</title>
-
-<!-- A-Frame -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-
-<!-- AR.js (AFRAME version) -->
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
-
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: sans-serif;
-    }
-
+    body { margin: 0; overflow: hidden; }
     #loading {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      color: white;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 6px 10px;
-      font-size: 16px;
-      z-index: 10;
-    }
-
-    /* Cross-browser fallback */
-    * {
-      -webkit-box-sizing: border-box;
-      box-sizing: border-box;
-      -webkit-user-select: none;
-      user-select: none;
+      top: 10px; left: 10px;
+      color: white; background: rgba(0,0,0,0.7);
+      padding: 5px; z-index: 10;
     }
   </style>
 </head>
 <body>
   <div id="loading">Loading AR Scene...</div>
 
-  <a-scene
-    embedded
-    arjs="sourceType: webcam;"
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true;"
-  >
+  <a-scene embedded arjs="sourceType: webcam;" vr-mode-ui="enabled: false">
     <a-assets></a-assets>
     <a-entity camera></a-entity>
   </a-scene>
@@ -57,22 +27,18 @@
   <script>
     async function loadModelList() {
       try {
-        const res = await fetch('models.json', { cache: "no-store" });
+        const res = await fetch('models.json');
         const models = await res.json();
-
         models.forEach(entry => {
           if (!entry.name || !entry.modelUrl || !entry.patternUrl) {
-            console.warn('❌ Skipping incomplete model entry:', entry);
+            console.warn('❌ Skipping invalid model entry:', entry);
             return;
           }
 
-          loadModel({
-            name: entry.name,
-            marker: entry.patternUrl,
-            glb: entry.modelUrl,
-            scale: (typeof entry.scale === "string") ? entry.scale : "0.5 0.5 0.5",
-            audio: entry.audioUrl || null
-          });
+          entry.glb = entry.modelUrl;
+          entry.marker = entry.patternUrl;
+          entry.audio = entry.audioUrl || null;
+          loadModel(entry);
         });
       } catch (err) {
         console.error('❌ Failed to load models.json:', err);
@@ -80,44 +46,56 @@
     }
 
     function loadModel(entry) {
-      const scene = document.querySelector('a-scene');
       const assets = document.querySelector('a-assets');
+      const scene = document.querySelector('a-scene');
 
-      // Add model to assets
+      // Add GLB to assets
       const modelAsset = document.createElement('a-asset-item');
       modelAsset.setAttribute('id', `model-${entry.name}`);
       modelAsset.setAttribute('src', entry.glb);
-      modelAsset.onerror = () => console.warn(`⚠️ Failed to load model: ${entry.glb}`);
       assets.appendChild(modelAsset);
 
-      // Add audio (optional)
+      // Optional audio asset
       if (entry.audio) {
-        const audioAsset = document.createElement('audio');
-        audioAsset.setAttribute('id', `audio-${entry.name}`);
-        audioAsset.setAttribute('src', entry.audio);
-        audioAsset.onerror = () => console.warn(`⚠️ Failed to load audio: ${entry.audio}`);
-        assets.appendChild(audioAsset);
+        const audio = document.createElement('audio');
+        audio.setAttribute('id', `audio-${entry.name}`);
+        audio.setAttribute('src', entry.audio);
+        audio.setAttribute('preload', 'auto');
+        assets.appendChild(audio);
       }
 
-      // Create marker
+      // Marker
       const marker = document.createElement('a-marker');
       marker.setAttribute('type', 'pattern');
       marker.setAttribute('url', entry.marker);
       marker.setAttribute('id', `marker-${entry.name}`);
 
-      // Add model to marker
-      const modelEntity = document.createElement('a-entity');
-      modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
-      modelEntity.setAttribute('scale', entry.scale);
-      modelEntity.setAttribute('animation-mixer', '');
-      marker.appendChild(modelEntity);
+      // Empty placeholder
+      const placeholder = document.createElement('a-entity');
+      marker.appendChild(placeholder);
+      scene.appendChild(marker);
 
-      // Audio control
+      // Once marker is found, spawn model if not yet spawned
       marker.addEventListener('markerFound', () => {
+        if (!scene.querySelector(`#spawned-${entry.name}`)) {
+          const model = document.createElement('a-entity');
+          model.setAttribute('id', `spawned-${entry.name}`);
+          model.setAttribute('gltf-model', `#model-${entry.name}`);
+          model.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
+
+          // Position where marker was detected
+          const worldPos = marker.object3D.getWorldPosition(new THREE.Vector3());
+          const worldRot = marker.object3D.getWorldQuaternion(new THREE.Quaternion());
+          model.object3D.position.copy(worldPos);
+          model.object3D.quaternion.copy(worldRot);
+
+          scene.appendChild(model);
+        }
+
         const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) {
           audio.currentTime = 0;
-          audio.play().catch(e => console.warn('Audio error:', e));
+          audio.play().catch(err => console.warn('⚠️ Audio play failed:', err));
         }
       });
 
@@ -125,8 +103,6 @@
         const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) audio.pause();
       });
-
-      scene.appendChild(marker);
     }
 
     window.addEventListener('DOMContentLoaded', () => {
