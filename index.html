@@ -28,7 +28,7 @@
       top: 10px;
       left: 10px;
       color: white;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
       padding: 6px 10px;
       z-index: 10;
     }
@@ -38,16 +38,20 @@
   <div id="loading">Loading AR Scene...</div>
   <input type="range" id="zoomSlider" min="40" max="120" value="80" step="1" />
 
-  <a-scene mindar-image="imageTargetSrc: targets/demo.mind; autoStart: true; filterMinCF:0.001; filterBeta: 0.001"
-           embedded
-           color-space="sRGB"
-           renderer="colorManagement: true, logarithmicDepthBuffer: true, physicallyCorrectLights"
-           vr-mode-ui="enabled: false"
-           device-orientation-permission-ui="enabled: true">
+  <a-scene
+    mindar-image="imageTargetSrc: targets/demo.mind; autoStart: true;"
+    embedded
+    color-space="sRGB"
+    renderer="colorManagement: true; logarithmicDepthBuffer: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: true"
+  >
 
     <a-assets></a-assets>
 
-    <a-camera id="mainCamera" position="0 0 0" look-controls camera></a-camera>
+    <mindar-camera>
+      <a-entity id="mainCamera" camera look-controls position="0 0 0"></a-entity>
+    </mindar-camera>
   </a-scene>
 
   <script>
@@ -73,6 +77,9 @@
       const modelAsset = document.createElement('a-asset-item');
       modelAsset.setAttribute('id', `model-${entry.name}`);
       modelAsset.setAttribute('src', entry.modelUrl);
+      modelAsset.addEventListener('error', () => {
+        console.warn(`❌ Could not load model: ${entry.modelUrl}`);
+      });
       assets.appendChild(modelAsset);
 
       if (entry.audioUrl) {
@@ -83,11 +90,11 @@
       }
 
       const anchor = document.createElement('a-entity');
-      anchor.setAttribute('mindar-image-target', `targetIndex: ${entry.targetIndex}`);
+      anchor.setAttribute('mindar-image-target', `targetIndex: ${entry.targetIndex || 0}`);
 
       const model = document.createElement('a-entity');
       model.setAttribute('gltf-model', `#model-${entry.name}`);
-      model.setAttribute('scale', entry.scale);
+      model.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
       model.setAttribute('position', '0 0 0');
       model.setAttribute('rotation', '0 0 0');
       model.setAttribute('animation-mixer', '');
@@ -110,17 +117,24 @@
       scene.appendChild(anchor);
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
+      await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {
+        alert('Camera access is required.');
+      });
+
       loadModelList();
 
       const zoomSlider = document.getElementById('zoomSlider');
-      const camera = document.querySelector('#mainCamera').getObject3D('camera');
+      const sceneEl = document.querySelector('a-scene');
 
-      zoomSlider.addEventListener('input', () => {
-        if (camera && camera.isPerspectiveCamera) {
+      sceneEl.addEventListener('loaded', () => {
+        const camera = document.querySelector('#mainCamera').getObject3D('camera');
+        if (!camera || !camera.isPerspectiveCamera) return;
+
+        zoomSlider.addEventListener('input', () => {
           camera.fov = parseFloat(zoomSlider.value);
           camera.updateProjectionMatrix();
-        }
+        });
       });
     });
   </script>
