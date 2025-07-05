@@ -7,7 +7,15 @@
   <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/3.4.7/aframe/build/aframe-ar.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #loading { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 5px; z-index: 10; }
+    #loading {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.7);
+      padding: 5px;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
@@ -22,8 +30,15 @@
     async function loadModelList() {
       try {
         const res = await fetch('models.json');
+        if (!res.ok) throw new Error(`Failed to load models.json: ${res.status}`);
         const models = await res.json();
-        models.forEach(model => loadModel(model));
+        models.forEach(entry => {
+          if (!entry.name || !entry.marker || !entry.glb) {
+            console.warn("Skipping invalid entry in models.json:", entry);
+            return;
+          }
+          loadModel(entry);
+        });
       } catch (err) {
         console.error('Error loading models.json:', err);
       }
@@ -33,17 +48,21 @@
       const assets = document.querySelector('a-assets');
       const scene = document.querySelector('a-scene');
 
-      // Add GLB model to assets
-      const modelAsset = document.createElement('a-asset-item');
-      modelAsset.setAttribute('id', `model-${entry.name}`);
-      modelAsset.setAttribute('src', entry.glb);
-      assets.appendChild(modelAsset);
+      // Add model to assets if glb is provided
+      if (entry.glb) {
+        const modelAsset = document.createElement('a-asset-item');
+        modelAsset.setAttribute('id', `model-${entry.name}`);
+        modelAsset.setAttribute('src', entry.glb);
+        assets.appendChild(modelAsset);
+      }
 
-      // Add audio to assets
-      const audioAsset = document.createElement('audio');
-      audioAsset.setAttribute('id', `audio-${entry.name}`);
-      audioAsset.setAttribute('src', entry.audio);
-      assets.appendChild(audioAsset);
+      // Add audio to assets if defined
+      if (entry.audio) {
+        const audioAsset = document.createElement('audio');
+        audioAsset.setAttribute('id', `audio-${entry.name}`);
+        audioAsset.setAttribute('src', entry.audio);
+        assets.appendChild(audioAsset);
+      }
 
       // Create marker
       const marker = document.createElement('a-marker');
@@ -51,25 +70,29 @@
       marker.setAttribute('url', entry.marker);
       marker.setAttribute('id', `marker-${entry.name}`);
 
-      // Create model entity
-      const modelEntity = document.createElement('a-entity');
-      modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
-      modelEntity.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
-      modelEntity.setAttribute('animation-mixer', '');
+      // Add model to marker if defined
+      if (entry.glb) {
+        const modelEntity = document.createElement('a-entity');
+        modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
+        modelEntity.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
+        modelEntity.setAttribute('animation-mixer', '');
+        marker.appendChild(modelEntity);
+      }
 
-      marker.appendChild(modelEntity);
+      // Handle audio playback on detection
+      if (entry.audio) {
+        marker.addEventListener('markerFound', () => {
+          const audio = document.getElementById(`audio-${entry.name}`);
+          if (audio) audio.play().catch(err => console.warn("Audio play error:", err));
+        });
+
+        marker.addEventListener('markerLost', () => {
+          const audio = document.getElementById(`audio-${entry.name}`);
+          if (audio) audio.pause();
+        });
+      }
+
       scene.appendChild(marker);
-
-      // Handle audio
-      marker.addEventListener('markerFound', () => {
-        const audio = document.getElementById(`audio-${entry.name}`);
-        if (audio) audio.play();
-      });
-
-      marker.addEventListener('markerLost', () => {
-        const audio = document.getElementById(`audio-${entry.name}`);
-        if (audio) audio.pause();
-      });
     }
 
     window.addEventListener('DOMContentLoaded', () => {
