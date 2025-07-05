@@ -48,7 +48,10 @@
 </head>
 <body>
 
-  <input type="range" id="zoomSlider" min="40" max="120" value="80" step="1" />
+  <label for="zoomSlider" id="zoomLabel" style="position:absolute;left:-9999px;">Zoom level</label>
+<input type="range" id="zoomSlider" min="40" max="120" value="80" step="1"
+  aria-labelledby="zoomLabel"
+  style="position: absolute; bottom: 10px; left: 10px; z-index: 20;" />
   <div id="loading">Loading AR Scene...</div>
 
   <a-scene
