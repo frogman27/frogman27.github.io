@@ -1,108 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000">
   <title>AR Marker Model Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/3.4.7/aframe/build/aframe-ar.min.js"></script>
+
+<!-- A-Frame -->
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+<!-- AR.js (AFRAME version) -->
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+
+
   <style>
-    body { margin: 0; overflow: hidden; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
     #loading {
       position: absolute;
       top: 10px;
       left: 10px;
       color: white;
       background: rgba(0, 0, 0, 0.7);
-      padding: 5px;
+      padding: 6px 10px;
+      font-size: 16px;
       z-index: 10;
+    }
+
+    /* Cross-browser fallback */
+    * {
+      -webkit-box-sizing: border-box;
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      user-select: none;
     }
   </style>
 </head>
 <body>
   <div id="loading">Loading AR Scene...</div>
 
-  <a-scene embedded arjs="sourceType: webcam;" vr-mode-ui="enabled: false">
-    <a-assets id="assets"></a-assets>
+  <a-scene
+    embedded
+    arjs="sourceType: webcam;"
+    vr-mode-ui="enabled: false"
+    renderer="logarithmicDepthBuffer: true;"
+  >
+    <a-assets></a-assets>
     <a-entity camera></a-entity>
   </a-scene>
 
   <script>
-    const modelInstances = {};
-
     async function loadModelList() {
       try {
-        const res = await fetch('models.json');
+        const res = await fetch('models.json', { cache: "no-store" });
         const models = await res.json();
 
         models.forEach(entry => {
           if (!entry.name || !entry.modelUrl || !entry.patternUrl) {
-            console.warn('❌ Skipping invalid or incomplete model entry:', entry);
+            console.warn('❌ Skipping incomplete model entry:', entry);
             return;
           }
 
-          // Add to assets
-          const assets = document.getElementById('assets');
-          const modelAsset = document.createElement('a-asset-item');
-          modelAsset.setAttribute('id', `model-${entry.name}`);
-          modelAsset.setAttribute('src', entry.modelUrl);
-          assets.appendChild(modelAsset);
-
-          if (entry.audioUrl) {
-            const audioAsset = document.createElement('audio');
-            audioAsset.setAttribute('id', `audio-${entry.name}`);
-            audioAsset.setAttribute('src', entry.audioUrl);
-            assets.appendChild(audioAsset);
-          }
-
-          addTrackedModel(entry);
+          loadModel({
+            name: entry.name,
+            marker: entry.patternUrl,
+            glb: entry.modelUrl,
+            scale: (typeof entry.scale === "string") ? entry.scale : "0.5 0.5 0.5",
+            audio: entry.audioUrl || null
+          });
         });
-
-        document.getElementById('loading').style.display = 'none';
       } catch (err) {
         console.error('❌ Failed to load models.json:', err);
       }
     }
 
-    function addTrackedModel(entry) {
+    function loadModel(entry) {
       const scene = document.querySelector('a-scene');
+      const assets = document.querySelector('a-assets');
 
+      // Add model to assets
+      const modelAsset = document.createElement('a-asset-item');
+      modelAsset.setAttribute('id', `model-${entry.name}`);
+      modelAsset.setAttribute('src', entry.glb);
+      modelAsset.onerror = () => console.warn(`⚠️ Failed to load model: ${entry.glb}`);
+      assets.appendChild(modelAsset);
+
+      // Add audio (optional)
+      if (entry.audio) {
+        const audioAsset = document.createElement('audio');
+        audioAsset.setAttribute('id', `audio-${entry.name}`);
+        audioAsset.setAttribute('src', entry.audio);
+        audioAsset.onerror = () => console.warn(`⚠️ Failed to load audio: ${entry.audio}`);
+        assets.appendChild(audioAsset);
+      }
+
+      // Create marker
       const marker = document.createElement('a-marker');
       marker.setAttribute('type', 'pattern');
-      marker.setAttribute('url', entry.patternUrl);
+      marker.setAttribute('url', entry.marker);
       marker.setAttribute('id', `marker-${entry.name}`);
-      marker.setAttribute('registerevents', ''); // optional, for custom logic
 
-      // Only add model once
-      let modelEntity = document.createElement('a-entity');
+      // Add model to marker
+      const modelEntity = document.createElement('a-entity');
       modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
-      modelEntity.setAttribute('scale', Array.isArray(entry.scale) ? entry.scale.join(' ') : '0.5 0.5 0.5');
+      modelEntity.setAttribute('scale', entry.scale);
       modelEntity.setAttribute('animation-mixer', '');
       marker.appendChild(modelEntity);
 
-      // Audio behavior
-      const audioId = `audio-${entry.name}`;
-      let audioPlayed = false;
-
+      // Audio control
       marker.addEventListener('markerFound', () => {
-        const audio = document.getElementById(audioId);
-        if (audio && !audioPlayed) {
+        const audio = document.getElementById(`audio-${entry.name}`);
+        if (audio) {
           audio.currentTime = 0;
           audio.play().catch(e => console.warn('Audio error:', e));
-          audioPlayed = true;
         }
       });
 
       marker.addEventListener('markerLost', () => {
-        const audio = document.getElementById(audioId);
+        const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) audio.pause();
-        audioPlayed = false;
       });
 
       scene.appendChild(marker);
     }
 
-    window.addEventListener('DOMContentLoaded', loadModelList);
+    window.addEventListener('DOMContentLoaded', () => {
+      loadModelList().then(() => {
+        document.getElementById('loading').style.display = 'none';
+      });
+    });
   </script>
 </body>
 </html>
