@@ -7,12 +7,11 @@
   <meta name="theme-color" content="#000000">
   <title>AR Marker Model Viewer</title>
 
-<!-- A-Frame -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
-<!-- AR.js (AFRAME version) -->
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
-
+  <!-- AR.js (AFRAME version) -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
   <style>
     body {
@@ -32,7 +31,13 @@
       z-index: 10;
     }
 
-    /* Cross-browser fallback */
+    #zoomSlider {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 20;
+    }
+
     * {
       -webkit-box-sizing: border-box;
       box-sizing: border-box;
@@ -43,8 +48,7 @@
 </head>
 <body>
 
-  <input type="range" id="zoomSlider" min="40" max="120" value="80" step="1"
-  style="position: absolute; bottom: 10px; left: 10px; z-index: 20;" />
+  <input type="range" id="zoomSlider" min="40" max="120" value="80" step="1" />
   <div id="loading">Loading AR Scene...</div>
 
   <a-scene
@@ -136,17 +140,27 @@
       loadModelList().then(() => {
         document.getElementById('loading').style.display = 'none';
       });
+
+      // Set up zoom control when camera is ready
+      const cameraEl = document.querySelector('[camera]');
+      const zoomSlider = document.getElementById('zoomSlider');
+
+      cameraEl.addEventListener('loaded', () => {
+        const threeCam = cameraEl.getObject3D('camera');
+        if (threeCam) {
+          // Set initial zoom from slider
+          threeCam.fov = parseFloat(zoomSlider.value);
+          threeCam.updateProjectionMatrix();
+
+          // Listen to slider changes
+          zoomSlider.addEventListener('input', (e) => {
+            const fov = parseFloat(e.target.value);
+            threeCam.fov = fov;
+            threeCam.updateProjectionMatrix();
+          });
+        }
+      });
     });
-
-    document.getElementById('zoomSlider').addEventListener('input', (e) => {
-  const fov = parseFloat(e.target.value);
-  const cameraEl = document.querySelector('[camera]');
-  if (cameraEl && cameraEl.getObject3D('camera')) {
-    cameraEl.getObject3D('camera').fov = fov;
-    cameraEl.getObject3D('camera').updateProjectionMatrix();
-  }
-});
-
   </script>
 </body>
 </html>
