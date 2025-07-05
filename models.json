@@ -11,17 +11,6 @@
     "audioUrl": "audio/demo_audio.mp3"
   },
   {
-    "name": "Bear",
-    "patternUrl": "markers/pattern-bear.patt",
-    "modelUrl": "models/bear.glb",
-    "scale": [
-      1.2,
-      1.2,
-      1.2
-    ],
-    "audioUrl": "audio/bear_roar.mp3"
-  },
-  {
     "name": "Rocket",
     "patternUrl": "markers/pattern-rocket.patt",
     "modelUrl": "models/rocket.glb",
