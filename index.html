@@ -144,26 +144,31 @@
         document.getElementById('loading').style.display = 'none';
       });
 
-      // Set up zoom control when camera is ready
-      const cameraEl = document.querySelector('[camera]');
-      const zoomSlider = document.getElementById('zoomSlider');
+ window.addEventListener('DOMContentLoaded', () => {
+  loadModelList().then(() => {
+    document.getElementById('loading').style.display = 'none';
+  });
 
-      cameraEl.addEventListener('loaded', () => {
-        const threeCam = cameraEl.getObject3D('camera');
-        if (threeCam) {
-          // Set initial zoom from slider
-          threeCam.fov = parseFloat(zoomSlider.value);
-          threeCam.updateProjectionMatrix();
+  const zoomSlider = document.getElementById('zoomSlider');
 
-          // Listen to slider changes
-          zoomSlider.addEventListener('input', (e) => {
-            const fov = parseFloat(e.target.value);
-            threeCam.fov = fov;
-            threeCam.updateProjectionMatrix();
-          });
-        }
+  // Wait until the scene and AR.js are ready
+  const sceneEl = document.querySelector('a-scene');
+
+  sceneEl.addEventListener('renderstart', () => {
+    const arCamera = sceneEl.camera; // Get AR.js-managed THREE.Camera
+    if (arCamera && arCamera.isPerspectiveCamera) {
+      arCamera.fov = parseFloat(zoomSlider.value);
+      arCamera.updateProjectionMatrix();
+
+      zoomSlider.addEventListener('input', (e) => {
+        const fov = parseFloat(e.target.value);
+        arCamera.fov = fov;
+        arCamera.updateProjectionMatrix();
       });
-    });
-  </script>
+    }
+  });
+});
+});
+</script>
 </body>
 </html>
