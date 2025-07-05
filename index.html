@@ -2,102 +2,79 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Sticky AR Model with Marker</title>
+  <title>AR Marker Model Viewer</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+  <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/3.4.7/aframe/build/aframe-ar.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #loading {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: black;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: sans-serif;
-      font-size: 1.5em;
-      z-index: 10;
-    }
+    #loading { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 5px; z-index: 10; }
   </style>
 </head>
-
 <body>
-  <div id="loading">Starting AR...</div>
+  <div id="loading">Loading AR Scene...</div>
 
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-
-    <!-- Lighting -->
-    <a-entity light="type: directional; color: #fff; intensity: 1" position="1 2 1"></a-entity>
-    <a-entity light="type: ambient; color: #888"></a-entity>
-
-    <!-- Assets -->
-    <a-assets>
-      <a-asset-item id="demoModel" src="models/demo_model.glb"></a-asset-item>
-    </a-assets>
-
-    <!-- Marker with invisible model to track position -->
-    <a-marker id="myMarker" type="pattern" url="markers/pattern-Demo_tag.patt">
-      <a-entity id="modelEntity"
-                gltf-model="#demoModel"
-                scale="0.5 0.5 0.5"
-                visible="false"
-                animation-mixer></a-entity>
-    </a-marker>
-
-    <!-- Main camera -->
+  <a-scene embedded arjs>
+    <a-assets></a-assets>
     <a-entity camera></a-entity>
   </a-scene>
 
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      const marker = document.querySelector("#myMarker");
-      const modelEntity = document.querySelector("#modelEntity");
-      const scene = document.querySelector("a-scene");
-      const THREE = AFRAME.THREE;
+    async function loadModelList() {
+      try {
+        const res = await fetch('models.json');
+        const models = await res.json();
+        models.forEach(model => loadModel(model));
+      } catch (err) {
+        console.error('Error loading models.json:', err);
+      }
+    }
 
-      let modelPlaced = false;
+    function loadModel(entry) {
+      const assets = document.querySelector('a-assets');
+      const scene = document.querySelector('a-scene');
 
-      scene.addEventListener("loaded", () => {
-        document.getElementById("loading").style.display = "none";
+      // Add GLB model to assets
+      const modelAsset = document.createElement('a-asset-item');
+      modelAsset.setAttribute('id', `model-${entry.name}`);
+      modelAsset.setAttribute('src', entry.glb);
+      assets.appendChild(modelAsset);
 
-        marker.addEventListener("markerFound", () => {
-          console.log("🎯 Marker detected!");
+      // Add audio to assets
+      const audioAsset = document.createElement('audio');
+      audioAsset.setAttribute('id', `audio-${entry.name}`);
+      audioAsset.setAttribute('src', entry.audio);
+      assets.appendChild(audioAsset);
 
-          if (!modelPlaced) {
-            // Ensure model has loaded
-            modelEntity.addEventListener("model-loaded", () => {
-              const worldPos = new THREE.Vector3();
-              const worldQuat = new THREE.Quaternion();
+      // Create marker
+      const marker = document.createElement('a-marker');
+      marker.setAttribute('type', 'pattern');
+      marker.setAttribute('url', entry.marker);
+      marker.setAttribute('id', `marker-${entry.name}`);
 
-              modelEntity.object3D.getWorldPosition(worldPos);
-              modelEntity.object3D.getWorldQuaternion(worldQuat);
+      // Create model entity
+      const modelEntity = document.createElement('a-entity');
+      modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
+      modelEntity.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
+      modelEntity.setAttribute('animation-mixer', '');
 
-              // Clone the loaded model
-              const clone = modelEntity.cloneNode();
-              clone.setAttribute("visible", "true");
-              scene.appendChild(clone);
+      marker.appendChild(modelEntity);
+      scene.appendChild(marker);
 
-              // Wait for clone to initialize
-              clone.addEventListener("model-loaded", () => {
-                clone.object3D.position.copy(worldPos);
-                clone.object3D.quaternion.copy(worldQuat);
-                console.log("📦 Sticky model placed at", worldPos);
-              });
+      // Handle audio
+      marker.addEventListener('markerFound', () => {
+        const audio = document.getElementById(`audio-${entry.name}`);
+        if (audio) audio.play();
+      });
 
-              modelEntity.setAttribute("visible", "false");
-              modelPlaced = true;
-            });
+      marker.addEventListener('markerLost', () => {
+        const audio = document.getElementById(`audio-${entry.name}`);
+        if (audio) audio.pause();
+      });
+    }
 
-            modelEntity.setAttribute("visible", "true"); // trigger model load
-          }
-        });
-
-        marker.addEventListener("markerLost", () => {
-          console.log("👋 Marker lost.");
-          modelEntity.setAttribute("visible", "false");
-        });
+    window.addEventListener('DOMContentLoaded', () => {
+      loadModelList().then(() => {
+        document.getElementById('loading').style.display = 'none';
       });
     });
   </script>
