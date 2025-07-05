@@ -21,7 +21,7 @@
 <body>
   <div id="loading">Loading AR Scene...</div>
 
-  <a-scene embedded arjs>
+  <a-scene embedded arjs="sourceType: webcam;">
     <a-assets></a-assets>
     <a-entity camera></a-entity>
   </a-scene>
@@ -30,17 +30,25 @@
     async function loadModelList() {
       try {
         const res = await fetch('models.json');
-        if (!res.ok) throw new Error(`Failed to load models.json: ${res.status}`);
+        if (!res.ok) throw new Error(`Failed to fetch models.json: ${res.status}`);
         const models = await res.json();
+
         models.forEach(entry => {
-          if (!entry.name || !entry.marker || !entry.glb) {
-            console.warn("Skipping invalid entry in models.json:", entry);
+          if (
+            typeof entry !== 'object' ||
+            !entry.name ||
+            !entry.marker ||
+            !entry.glb
+          ) {
+            console.warn('❌ Skipping invalid or incomplete model entry:', entry);
             return;
           }
           loadModel(entry);
         });
       } catch (err) {
-        console.error('Error loading models.json:', err);
+        console.error('⚠️ Error loading models.json:', err);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
       }
     }
 
@@ -48,42 +56,40 @@
       const assets = document.querySelector('a-assets');
       const scene = document.querySelector('a-scene');
 
-      // Add model to assets if glb is provided
-      if (entry.glb) {
-        const modelAsset = document.createElement('a-asset-item');
-        modelAsset.setAttribute('id', `model-${entry.name}`);
-        modelAsset.setAttribute('src', entry.glb);
-        assets.appendChild(modelAsset);
-      }
+      // --- Add model to assets ---
+      const modelAsset = document.createElement('a-asset-item');
+      modelAsset.setAttribute('id', `model-${entry.name}`);
+      modelAsset.setAttribute('src', entry.glb);
+      assets.appendChild(modelAsset);
 
-      // Add audio to assets if defined
+      // --- Add audio if present ---
+      let hasAudio = false;
       if (entry.audio) {
         const audioAsset = document.createElement('audio');
         audioAsset.setAttribute('id', `audio-${entry.name}`);
         audioAsset.setAttribute('src', entry.audio);
         assets.appendChild(audioAsset);
+        hasAudio = true;
       }
 
-      // Create marker
+      // --- Marker setup ---
       const marker = document.createElement('a-marker');
       marker.setAttribute('type', 'pattern');
       marker.setAttribute('url', entry.marker);
       marker.setAttribute('id', `marker-${entry.name}`);
 
-      // Add model to marker if defined
-      if (entry.glb) {
-        const modelEntity = document.createElement('a-entity');
-        modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
-        modelEntity.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
-        modelEntity.setAttribute('animation-mixer', '');
-        marker.appendChild(modelEntity);
-      }
+      // --- 3D model setup ---
+      const modelEntity = document.createElement('a-entity');
+      modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
+      modelEntity.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
+      modelEntity.setAttribute('animation-mixer', '');
+      marker.appendChild(modelEntity);
 
-      // Handle audio playback on detection
-      if (entry.audio) {
+      // --- Audio behavior ---
+      if (hasAudio) {
         marker.addEventListener('markerFound', () => {
           const audio = document.getElementById(`audio-${entry.name}`);
-          if (audio) audio.play().catch(err => console.warn("Audio play error:", err));
+          if (audio) audio.play().catch(err => console.warn('Audio play failed:', err));
         });
 
         marker.addEventListener('markerLost', () => {
@@ -95,11 +101,7 @@
       scene.appendChild(marker);
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      loadModelList().then(() => {
-        document.getElementById('loading').style.display = 'none';
-      });
-    });
+    window.addEventListener('DOMContentLoaded', loadModelList);
   </script>
 </body>
 </html>
