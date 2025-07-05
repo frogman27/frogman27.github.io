@@ -1,9 +1,9 @@
 [
   {
     "name": "Demo Model",
-    "patternUrl": "markers/pattern-Demo_tag.patt",
+    "targetIndex": 0,
     "modelUrl": "models/demo_model.glb",
-    "scale": [0.5, 0.5, 0.5],
+    "scale": "0.5 0.5 0.5",
     "audioUrl": "audio/demo_audio.mp3"
   }
 ]

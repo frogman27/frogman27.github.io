@@ -2,33 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000" />
-  <title>AR Marker Model Viewer</title>
+  <title>MindAR Marker Viewer</title>
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-
-  <!-- AR.js (A-Frame version) -->
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+  <!-- A-Frame + MindAR -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/aframe/mindar-aframe.prod.js"></script>
 
   <style>
     body {
       margin: 0;
       overflow: hidden;
       font-family: sans-serif;
-    }
-
-    #loading {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: white;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 6px 10px;
-      font-size: 16px;
-      z-index: 10;
     }
 
     #zoomSlider {
@@ -38,63 +23,32 @@
       z-index: 20;
     }
 
-    * {
-      box-sizing: border-box;
-      user-select: none;
+    #loading {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.7);
+      padding: 6px 10px;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
-
-  <label for="zoomSlider" id="zoomLabel" style="position:absolute;left:-9999px;">Zoom level</label>
-  <input
-    type="range"
-    id="zoomSlider"
-    min="40"
-    max="120"
-    value="80"
-    step="1"
-    aria-labelledby="zoomLabel"
-  />
-
   <div id="loading">Loading AR Scene...</div>
+  <input type="range" id="zoomSlider" min="40" max="120" value="80" step="1" />
 
-  <a-scene
-    embedded
-    arjs="sourceType: webcam;"
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true;"
-  >
+  <a-scene mindar-image="imageTargetSrc: targets/demo.mind; autoStart: true; filterMinCF:0.001; filterBeta: 0.001"
+           embedded
+           color-space="sRGB"
+           renderer="colorManagement: true, logarithmicDepthBuffer: true, physicallyCorrectLights"
+           vr-mode-ui="enabled: false"
+           device-orientation-permission-ui="enabled: true">
+
     <a-assets></a-assets>
 
-    <!-- Camera with custom component for FOV control -->
-    <a-entity id="mainCamera" camera fov-adjuster></a-entity>
+    <a-camera id="mainCamera" position="0 0 0" look-controls camera></a-camera>
   </a-scene>
-
-  <script>
-    AFRAME.registerComponent('fov-adjuster', {
-      init: function () {
-        const zoomSlider = document.getElementById('zoomSlider');
-        const camera = this.el.getObject3D('camera');
-
-        if (!camera || !camera.isPerspectiveCamera) {
-          console.warn('Camera not ready or not perspective.');
-          return;
-        }
-
-        const applyFOV = () => {
-          camera.fov = parseFloat(zoomSlider.value);
-          camera.updateProjectionMatrix();
-        };
-
-        // Initial value
-        applyFOV();
-
-        // Update on slider input
-        zoomSlider.addEventListener('input', applyFOV);
-      }
-    });
-  </script>
 
   <script>
     async function loadModelList() {
@@ -103,54 +57,44 @@
         const models = await res.json();
 
         models.forEach(entry => {
-          if (!entry.name || !entry.modelUrl || !entry.patternUrl) {
-            console.warn('❌ Skipping incomplete model entry:', entry);
-            return;
-          }
-
-          loadModel({
-            name: entry.name,
-            marker: entry.patternUrl,
-            glb: entry.modelUrl,
-            scale: (typeof entry.scale === "string") ? entry.scale : "0.5 0.5 0.5",
-            audio: entry.audioUrl || null
-          });
+          loadMindARModel(entry);
         });
+
+        document.getElementById('loading').style.display = 'none';
       } catch (err) {
         console.error('❌ Failed to load models.json:', err);
       }
     }
 
-    function loadModel(entry) {
+    function loadMindARModel(entry) {
       const scene = document.querySelector('a-scene');
       const assets = document.querySelector('a-assets');
 
       const modelAsset = document.createElement('a-asset-item');
       modelAsset.setAttribute('id', `model-${entry.name}`);
-      modelAsset.setAttribute('src', entry.glb);
-      modelAsset.onerror = () => console.warn(`⚠️ Failed to load model: ${entry.glb}`);
+      modelAsset.setAttribute('src', entry.modelUrl);
       assets.appendChild(modelAsset);
 
-      if (entry.audio) {
-        const audioAsset = document.createElement('audio');
-        audioAsset.setAttribute('id', `audio-${entry.name}`);
-        audioAsset.setAttribute('src', entry.audio);
-        audioAsset.onerror = () => console.warn(`⚠️ Failed to load audio: ${entry.audio}`);
-        assets.appendChild(audioAsset);
+      if (entry.audioUrl) {
+        const audio = document.createElement('audio');
+        audio.setAttribute('id', `audio-${entry.name}`);
+        audio.setAttribute('src', entry.audioUrl);
+        assets.appendChild(audio);
       }
 
-      const marker = document.createElement('a-marker');
-      marker.setAttribute('type', 'pattern');
-      marker.setAttribute('url', entry.marker);
-      marker.setAttribute('id', `marker-${entry.name}`);
+      const anchor = document.createElement('a-entity');
+      anchor.setAttribute('mindar-image-target', `targetIndex: ${entry.targetIndex}`);
 
-      const modelEntity = document.createElement('a-entity');
-      modelEntity.setAttribute('gltf-model', `#model-${entry.name}`);
-      modelEntity.setAttribute('scale', entry.scale);
-      modelEntity.setAttribute('animation-mixer', '');
-      marker.appendChild(modelEntity);
+      const model = document.createElement('a-entity');
+      model.setAttribute('gltf-model', `#model-${entry.name}`);
+      model.setAttribute('scale', entry.scale);
+      model.setAttribute('position', '0 0 0');
+      model.setAttribute('rotation', '0 0 0');
+      model.setAttribute('animation-mixer', '');
 
-      marker.addEventListener('markerFound', () => {
+      anchor.appendChild(model);
+
+      anchor.addEventListener('targetFound', () => {
         const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) {
           audio.currentTime = 0;
@@ -158,17 +102,25 @@
         }
       });
 
-      marker.addEventListener('markerLost', () => {
+      anchor.addEventListener('targetLost', () => {
         const audio = document.getElementById(`audio-${entry.name}`);
         if (audio) audio.pause();
       });
 
-      scene.appendChild(marker);
+      scene.appendChild(anchor);
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      loadModelList().then(() => {
-        document.getElementById('loading').style.display = 'none';
+      loadModelList();
+
+      const zoomSlider = document.getElementById('zoomSlider');
+      const camera = document.querySelector('#mainCamera').getObject3D('camera');
+
+      zoomSlider.addEventListener('input', () => {
+        if (camera && camera.isPerspectiveCamera) {
+          camera.fov = parseFloat(zoomSlider.value);
+          camera.updateProjectionMatrix();
+        }
       });
     });
   </script>
