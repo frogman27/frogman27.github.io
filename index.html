@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
   <title>MindAR Marker Viewer</title>
 
   <!-- A-Frame + MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/aframe/mindar-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js?v=1.4.2"></script>
+  <script src="js/mindar-aframe.prod.js"></script>
+
+
 
   <style>
     body {
@@ -23,86 +26,88 @@
       z-index: 20;
     }
 
+    label[for="zoomSlider"] {
+      position: absolute;
+      left: -9999px;
+    }
+
     #loading {
       position: absolute;
       top: 10px;
       left: 10px;
       color: white;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0,0,0,0.7);
       padding: 6px 10px;
       z-index: 10;
+    }
+
+    /* CSS order fix for cursor */
+    .grab-cursor {
+      cursor: -webkit-grab;
+      cursor: grab;
     }
   </style>
 </head>
 <body>
+
+  <label for="zoomSlider">Zoom Level</label>
+  <input
+    type="range"
+    id="zoomSlider"
+    title="Zoom level control"
+    min="40"
+    max="120"
+    value="80"
+    step="1"
+  />
+
   <div id="loading">Loading AR Scene...</div>
-  <input type="range" id="zoomSlider" min="40" max="120" value="80" step="1" />
 
   <a-scene
-    mindar-image="imageTargetSrc: targets/demo.mind; autoStart: true;"
+    mindar-image="imageTargetSrc: targets/demo.mind; autoStart: true; filterMinCF:0.001; filterBeta: 0.001"
     embedded
     color-space="sRGB"
-    renderer="colorManagement: true; logarithmicDepthBuffer: true;"
+    renderer="colorManagement: true, logarithmicDepthBuffer: true, physicallyCorrectLights"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: true"
   >
 
-    <a-assets></a-assets>
+    <a-assets>
+      <a-asset-item id="model-Demo-Model" src="models/demo_model.glb"></a-asset-item>
+      <audio id="audio-Demo-Model" src="audio/demo_audio.mp3"></audio>
+    </a-assets>
 
-    <mindar-camera>
-      <a-entity id="mainCamera" camera look-controls position="0 0 0"></a-entity>
-    </mindar-camera>
+    <a-camera id="mainCamera" position="0 0 0" look-controls camera></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-entity
+        gltf-model="#model-Demo-Model"
+        scale="0.5 0.5 0.5"
+        position="0 0 0"
+        rotation="0 0 0"
+        animation-mixer
+      ></a-entity>
+    </a-entity>
+
   </a-scene>
 
   <script>
-    async function loadModelList() {
-      try {
-        const res = await fetch('models.json', { cache: "no-store" });
-        const models = await res.json();
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('loading').style.display = 'none';
 
-        models.forEach(entry => {
-          loadMindARModel(entry);
-        });
+      const zoomSlider = document.getElementById('zoomSlider');
+      const camera = document.querySelector('#mainCamera').getObject3D('camera');
 
-        document.getElementById('loading').style.display = 'none';
-      } catch (err) {
-        console.error('❌ Failed to load models.json:', err);
-      }
-    }
-
-    function loadMindARModel(entry) {
-      const scene = document.querySelector('a-scene');
-      const assets = document.querySelector('a-assets');
-
-      const modelAsset = document.createElement('a-asset-item');
-      modelAsset.setAttribute('id', `model-${entry.name}`);
-      modelAsset.setAttribute('src', entry.modelUrl);
-      modelAsset.addEventListener('error', () => {
-        console.warn(`❌ Could not load model: ${entry.modelUrl}`);
+      zoomSlider.addEventListener('input', () => {
+        if (camera && camera.isPerspectiveCamera) {
+          camera.fov = parseFloat(zoomSlider.value);
+          camera.updateProjectionMatrix();
+        }
       });
-      assets.appendChild(modelAsset);
 
-      if (entry.audioUrl) {
-        const audio = document.createElement('audio');
-        audio.setAttribute('id', `audio-${entry.name}`);
-        audio.setAttribute('src', entry.audioUrl);
-        assets.appendChild(audio);
-      }
-
-      const anchor = document.createElement('a-entity');
-      anchor.setAttribute('mindar-image-target', `targetIndex: ${entry.targetIndex || 0}`);
-
-      const model = document.createElement('a-entity');
-      model.setAttribute('gltf-model', `#model-${entry.name}`);
-      model.setAttribute('scale', entry.scale || '0.5 0.5 0.5');
-      model.setAttribute('position', '0 0 0');
-      model.setAttribute('rotation', '0 0 0');
-      model.setAttribute('animation-mixer', '');
-
-      anchor.appendChild(model);
-
+      const anchor = document.querySelector('[mindar-image-target]');
       anchor.addEventListener('targetFound', () => {
-        const audio = document.getElementById(`audio-${entry.name}`);
+        const audio = document.getElementById('audio-Demo-Model');
         if (audio) {
           audio.currentTime = 0;
           audio.play().catch(e => console.warn('Audio error:', e));
@@ -110,31 +115,10 @@
       });
 
       anchor.addEventListener('targetLost', () => {
-        const audio = document.getElementById(`audio-${entry.name}`);
-        if (audio) audio.pause();
-      });
-
-      scene.appendChild(anchor);
-    }
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {
-        alert('Camera access is required.');
-      });
-
-      loadModelList();
-
-      const zoomSlider = document.getElementById('zoomSlider');
-      const sceneEl = document.querySelector('a-scene');
-
-      sceneEl.addEventListener('loaded', () => {
-        const camera = document.querySelector('#mainCamera').getObject3D('camera');
-        if (!camera || !camera.isPerspectiveCamera) return;
-
-        zoomSlider.addEventListener('input', () => {
-          camera.fov = parseFloat(zoomSlider.value);
-          camera.updateProjectionMatrix();
-        });
+        const audio = document.getElementById('audio-Demo-Model');
+        if (audio) {
+          audio.pause();
+        }
       });
     });
   </script>
