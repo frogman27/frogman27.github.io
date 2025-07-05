@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AR Model Manager</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+    }
+    #modelList {
+      margin: 20px 0;
+    }
+    .model-entry {
+      background: white;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button.delete {
+      background: #f44336;
+      float: right;
+    }
+  </style>
+</head>
+<body>
+  <h1>AR Model Manager</h1>
+  <div id="modelList"></div>
+
+  <h2>Add New Model</h2>
+  <form id="uploadForm">
+    <label for="name">Model Name:</label>
+    <input type="text" id="name" name="name" required>
+
+    <label for="scale">Model Scale (x y z):</label>
+    <input type="text" id="scale" name="scale" value="1 1 1">
+
+    <label for="model">Model (.glb):</label>
+    <input type="file" id="model" name="model" accept=".glb" required>
+
+    <label for="pattern">Marker (.patt):</label>
+    <input type="file" id="pattern" name="pattern" accept=".patt" required>
+
+    <label for="audio">Optional Audio (.mp3):</label>
+    <input type="file" id="audio" name="audio" accept=".mp3">
+
+    <button type="submit">Upload</button>
+  </form>
+
+  <script>
+    const modelListDiv = document.getElementById('modelList');
+    const uploadForm = document.getElementById('uploadForm');
+
+    let modelData = [];
+
+    async function loadModels() {
+      const response = await fetch('models.json');
+      modelData = await response.json();
+      renderModelList();
+    }
+
+    function renderModelList() {
+      modelListDiv.innerHTML = '<h2>Existing Models</h2>';
+      modelData.forEach((model, index) => {
+        const div = document.createElement('div');
+        div.className = 'model-entry';
+        div.innerHTML = `
+          <strong>${model.name}</strong>
+          <p>Model: ${model.model}</p>
+          <p>Marker: ${model.pattern}</p>
+          <p>Scale: ${model.scale}</p>
+          <p>Audio: ${model.audio || 'None'}</p>
+          <button class="delete" onclick="deleteModel(${index})">Delete</button>
+        `;
+        modelListDiv.appendChild(div);
+      });
+    }
+
+    function deleteModel(index) {
+      if (confirm(`Are you sure you want to delete ${modelData[index].name}?`)) {
+        modelData.splice(index, 1);
+        saveModels();
+      }
+    }
+
+    function saveModels() {
+      const blob = new Blob([JSON.stringify(modelData, null, 2)], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'models.json';
+      a.click();
+      loadModels();
+    }
+
+    uploadForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const scale = document.getElementById('scale').value;
+      const modelFile = document.getElementById('model').files[0];
+      const patternFile = document.getElementById('pattern').files[0];
+      const audioFile = document.getElementById('audio').files[0];
+
+      if (!modelFile || !patternFile) {
+        alert('Model and pattern file are required.');
+        return;
+      }
+
+      const newModel = {
+        name: name,
+        model: 'models/' + modelFile.name,
+        pattern: 'markers/' + patternFile.name,
+        scale: scale,
+        audio: audioFile ? 'audio/' + audioFile.name : undefined
+      };
+
+      modelData.push(newModel);
+      saveModels();
+    });
+
+    loadModels();
+  </script>
+</body>
+</html>

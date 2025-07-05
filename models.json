@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Demo Model",
+    "patternUrl": "markers/pattern-Demo_tag.patt",
+    "modelUrl": "models/demo_model.glb",
+    "scale": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "audioUrl": "audio/demo_audio.mp3"
+  },
+  {
+    "name": "Bear",
+    "patternUrl": "markers/pattern-bear.patt",
+    "modelUrl": "models/bear.glb",
+    "scale": [
+      1.2,
+      1.2,
+      1.2
+    ],
+    "audioUrl": "audio/bear_roar.mp3"
+  },
+  {
+    "name": "Rocket",
+    "patternUrl": "markers/pattern-rocket.patt",
+    "modelUrl": "models/rocket.glb",
+    "scale": [
+      0.8,
+      0.8,
+      0.8
+    ],
+    "audioUrl": "audio/rocket_launch.mp3"
+  }
+]
