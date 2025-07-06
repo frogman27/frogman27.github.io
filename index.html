@@ -1,124 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000" />
-  <title>MindAR Marker Viewer</title>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Multi-Marker WebAR Viewer</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
+    <script src="js/ar-control.js"></script>
+    <style>
+      #controls {
+        position: fixed;
+        bottom: 10px;
+        width: 100%;
+        text-align: center;
+        z-index: 9999;
+      }
 
-  <!-- A-Frame + MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js?v=1.4.2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-aframe.prod.js" type="application/javascript"></script>
+      #controls button {
+        font-size: 18px;
+        padding: 10px 20px;
+        margin: 5px;
+        background: #ffffffaa;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
 
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: sans-serif;
-    }
+  <body style="margin: 0; overflow: hidden;">
+    <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+    >
+      <!-- Marker 1 -->
+      <a-marker id="marker1" type="pattern" url="markers/marker1.patt" emitevents="true">
+        <a-entity
+          id="model1"
+          gltf-model="models/marker1.gltf"
+          animation-mixer
+          scale="0.5 0.5 0.5"
+        ></a-entity>
+        <a-sound id="sound1" src="audio/marker1.mp3" autoplay="false"></a-sound>
+      </a-marker>
 
-    #zoomSlider {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      z-index: 20;
-    }
+      <!-- Marker 2 -->
+      <a-marker id="marker2" type="pattern" url="markers/marker2.patt" emitevents="true">
+        <a-entity
+          id="model2"
+          gltf-model="models/marker2.gltf"
+          animation-mixer
+          scale="0.5 0.5 0.5"
+        ></a-entity>
+        <a-sound id="sound2" src="audio/marker2.mp3" autoplay="false"></a-sound>
+      </a-marker>
 
-    label[for="zoomSlider"] {
-      position: absolute;
-      left: -9999px;
-    }
+      <a-entity camera></a-entity>
+    </a-scene>
 
-    #loading {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: white;
-      background: rgba(0,0,0,0.7);
-      padding: 6px 10px;
-      z-index: 10;
-    }
-
-    /* CSS order fix for cursor */
-    .grab-cursor {
-      cursor: -webkit-grab;
-      cursor: grab;
-    }
-  </style>
-</head>
-<body>
-
-  <label for="zoomSlider">Zoom Level</label>
-  <input
-    type="range"
-    id="zoomSlider"
-    title="Zoom level control"
-    min="40"
-    max="120"
-    value="80"
-    step="1"
-  />
-
-  <div id="loading">Loading AR Scene...</div>
-
-  <a-scene
-    mindar-image="imageTargetSrc: targets/demo.mind; autoStart: true; filterMinCF:0.001; filterBeta: 0.001"
-    embedded
-    color-space="sRGB"
-    renderer="colorManagement: true, logarithmicDepthBuffer: true, physicallyCorrectLights"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: true"
-  >
-
-    <a-assets>
-      <a-asset-item id="model-Demo-Model" src="models/demo_model.glb"></a-asset-item>
-      <audio id="audio-Demo-Model" src="audio/demo_audio.mp3"></audio>
-    </a-assets>
-
-    <a-camera id="mainCamera" position="0 0 0" look-controls camera></a-camera>
-
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-entity
-        gltf-model="#model-Demo-Model"
-        scale="0.5 0.5 0.5"
-        position="0 0 0"
-        rotation="0 0 0"
-        animation-mixer
-      ></a-entity>
-    </a-entity>
-
-  </a-scene>
-
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('loading').style.display = 'none';
-
-      const zoomSlider = document.getElementById('zoomSlider');
-      const camera = document.querySelector('#mainCamera').getObject3D('camera');
-
-      zoomSlider.addEventListener('input', () => {
-        if (camera && camera.isPerspectiveCamera) {
-          camera.fov = parseFloat(zoomSlider.value);
-          camera.updateProjectionMatrix();
-        }
-      });
-
-      const anchor = document.querySelector('[mindar-image-target]');
-      anchor.addEventListener('targetFound', () => {
-        const audio = document.getElementById('audio-Demo-Model');
-        if (audio) {
-          audio.currentTime = 0;
-          audio.play().catch(e => console.warn('Audio error:', e));
-        }
-      });
-
-      anchor.addEventListener('targetLost', () => {
-        const audio = document.getElementById('audio-Demo-Model');
-        if (audio) {
-          audio.pause();
-        }
-      });
-    });
-  </script>
-</body>
+    <div id="controls">
+      <button onclick="playMedia()">▶ Play</button>
+      <button onclick="pauseMedia()">⏸ Pause</button>
+      <button onclick="replayMedia()">🔁 Replay</button>
+    </div>
+  </body>
 </html>
