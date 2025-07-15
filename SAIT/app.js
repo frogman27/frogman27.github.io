@@ -4,53 +4,50 @@ const engine = new BABYLON.Engine(canvas, true);
 const createScene = async () => {
   const scene = new BABYLON.Scene(engine);
 
-  // Add light
-  const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+  // Light
+  const light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
   light.intensity = 1.2;
 
-  // Load the model
+  // Load Model (adjust name/path)
   const result = await BABYLON.SceneLoader.ImportMeshAsync("", "./models/", "yourModel.glb", scene);
   const rootMesh = result.meshes[0];
+  rootMesh.setEnabled(false); // Hide until placed
 
-  // Hide the model initially until it's placed
-  rootMesh.setEnabled(false);
-
-  // Prepare XR
-  const xr = await scene.createDefaultXRExperienceAsync({
+  // Enable XR
+  const xrHelper = await scene.createDefaultXRExperienceAsync({
     uiOptions: {
       sessionMode: "immersive-ar",
       referenceSpaceType: "local-floor"
-    },
-    optionalFeatures: true
+    }
   });
 
-  const featuresManager = xr.baseExperience.featuresManager;
+  const fm = xrHelper.baseExperience.featuresManager;
+  const hitTest = fm.enableFeature(BABYLON.WebXRHitTest.Name, "latest");
 
-  // Enable hit test for model placement
-  const hitTest = featuresManager.enableFeature(BABYLON.WebXRHitTest.Name, "latest");
-  let modelPlaced = false;
+  let placed = false;
 
   hitTest.onHitTestResultObservable.add((results) => {
-    if (!modelPlaced && results.length > 0) {
+    if (!placed && results.length) {
       const hit = results[0];
       const anchor = hit.createAnchor();
       rootMesh.setEnabled(true);
       rootMesh.setParent(anchor);
-      modelPlaced = true;
+      placed = true;
     }
   });
 
   return scene;
 };
 
-createScene().then((scene) => {
+createScene().then(scene => {
   engine.runRenderLoop(() => scene.render());
 });
 
 window.addEventListener("resize", () => engine.resize());
 
 document.getElementById("enterAR").addEventListener("click", async () => {
-  const xrHelper = await engine.scenes[0].createDefaultXRExperienceAsync({
+  // Trigger AR session start
+  await engine.scenes[0].createDefaultXRExperienceAsync({
     uiOptions: {
       sessionMode: "immersive-ar",
       referenceSpaceType: "local-floor"
