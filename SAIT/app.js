@@ -25,7 +25,7 @@ document.getElementById("enterAR").addEventListener("click", async () => {
 });
 
 
-  const featuresManager = xr.baseExperience.featuresManager;
+  const featuresManager = xrHelper.baseExperience.featuresManager;
   const hitTest = featuresManager.enableFeature(BABYLON.WebXRHitTest.Name, "latest");
 
   const loadModelWithAudio = async (modelFile, audioFile) => {
