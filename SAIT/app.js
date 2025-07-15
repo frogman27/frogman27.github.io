@@ -7,10 +7,23 @@ const createScene = async () => {
   const scene = new BABYLON.Scene(engine);
   const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-  const xr = await scene.createDefaultXRExperienceAsync({
-    uiOptions: { sessionMode: "immersive-ar", referenceSpaceType: "local-floor" },
-    optionalFeatures: true
-  });
+const xrHelper = await scene.createDefaultXRExperienceAsync({
+  uiOptions: { sessionMode: "immersive-ar", referenceSpaceType: "local-floor" },
+  optionalFeatures: true
+});
+
+document.getElementById("enterAR").addEventListener("click", async () => {
+  try {
+    await xrHelper.baseExperience.enterXRAsync(
+      "immersive-ar",
+      "local-floor",
+      { optionalFeatures: ["hit-test", "anchors"] }
+    );
+  } catch (e) {
+    console.error("Failed to enter AR:", e);
+  }
+});
+
 
   const featuresManager = xr.baseExperience.featuresManager;
   const hitTest = featuresManager.enableFeature(BABYLON.WebXRHitTest.Name, "latest");
