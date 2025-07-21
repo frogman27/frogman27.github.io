@@ -69,7 +69,6 @@
         <a-sound id="sound1" src="audio/marker1.mp3" autoplay="false"></a-sound>
       </a-marker>
 
-
       <!-- Marker 2 -->
       <a-marker id="marker2" type="pattern" url="markers/marker2.patt" emitevents="true">
         <a-entity
@@ -107,27 +106,42 @@
       AFRAME.scenes[0].addEventListener('loaded', () => {
         Object.keys(markers).forEach(id => {
           const markerEl = document.querySelector(`#${id}`);
+
           markerEl.addEventListener('markerFound', () => {
             activeMarker = id;
             const model = document.querySelector(markers[id].model);
             const sound = document.querySelector(markers[id].sound);
-            if (model.components['animation-mixer']) {
-              model.components['animation-mixer'].play();
-            }
-            if (sound.components.sound && !sound.components.sound.isPlaying) {
-              sound.components.sound.playSound();
+
+            if (!model.hasLoaded) {
+              model.addEventListener('model-loaded', () => {
+                if (model.components['animation-mixer']) {
+                  model.components['animation-mixer'].play();
+                }
+                if (sound.components.sound && !sound.components.sound.isPlaying) {
+                  sound.components.sound.playSound();
+                }
+              });
+            } else {
+              if (model.components['animation-mixer']) {
+                model.components['animation-mixer'].play();
+              }
+              if (sound.components.sound && !sound.components.sound.isPlaying) {
+                sound.components.sound.playSound();
+              }
             }
           });
 
           markerEl.addEventListener('markerLost', () => {
             const model = document.querySelector(markers[id].model);
             const sound = document.querySelector(markers[id].sound);
+
             if (model.components['animation-mixer']) {
               model.components['animation-mixer'].stopAction();
             }
             if (sound.components.sound && sound.components.sound.isPlaying) {
               sound.components.sound.stopSound();
             }
+
             activeMarker = null;
           });
         });
@@ -137,26 +151,41 @@
         if (!activeMarker) return;
         const model = document.querySelector(markers[activeMarker].model);
         const sound = document.querySelector(markers[activeMarker].sound);
-        model.components['animation-mixer'].play();
-        sound.components.sound.playSound();
+
+        if (model.components['animation-mixer']) {
+          model.components['animation-mixer'].play();
+        }
+        if (sound.components.sound) {
+          sound.components.sound.playSound();
+        }
       }
 
       function pauseMedia() {
         if (!activeMarker) return;
         const model = document.querySelector(markers[activeMarker].model);
         const sound = document.querySelector(markers[activeMarker].sound);
-        model.components['animation-mixer'].pause();
-        sound.components.sound.pause();
+
+        if (model.components['animation-mixer']) {
+          model.components['animation-mixer'].pause();
+        }
+        if (sound.components.sound) {
+          sound.components.sound.pause();
+        }
       }
 
       function replayMedia() {
         if (!activeMarker) return;
         const model = document.querySelector(markers[activeMarker].model);
         const sound = document.querySelector(markers[activeMarker].sound);
-        model.components['animation-mixer'].stopAction();
-        model.components['animation-mixer'].play();
-        sound.components.sound.stopSound();
-        sound.components.sound.playSound();
+
+        if (model.components['animation-mixer']) {
+          model.components['animation-mixer'].stopAction();
+          model.components['animation-mixer'].play();
+        }
+        if (sound.components.sound) {
+          sound.components.sound.stopSound();
+          sound.components.sound.playSound();
+        }
       }
     </script>
   </body>
