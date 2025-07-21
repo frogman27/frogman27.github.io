@@ -6,6 +6,7 @@
     <script src="js/aframe.min.js"></script>
     <script src="js/aframe-ar.min.js"></script>
     <script src="js/ar-control.js"></script>
+    <link rel="stylesheet" href="css/all.min.css">
     <style>
       * {
         box-sizing: border-box;
@@ -43,14 +44,12 @@
           padding: 8px 14px;
         }
       }
+
+      i[class^="fa-"] {
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+      }
     </style>
-<style>
-  i[class^="fa-"] {
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-  }
-</style>
-<link rel="stylesheet" href="css/all.min.css">
   </head>
 
   <body style="margin: 0; overflow: hidden;">
@@ -64,7 +63,7 @@
         <a-entity
           id="model1"
           gltf-model="models/marker1.glb"
-          animation-mixer
+          animation-mixer="clip: *"
           scale="0.5 0.5 0.5"
         ></a-entity>
         <a-sound id="sound1" src="audio/marker1.mp3" autoplay="false"></a-sound>
@@ -75,7 +74,7 @@
         <a-entity
           id="model2"
           gltf-model="models/marker2.glb"
-          animation-mixer
+          animation-mixer="clip: *"
           scale="0.5 0.5 0.5"
         ></a-entity>
         <a-sound id="sound2" src="audio/marker2.mp3" autoplay="false"></a-sound>
@@ -84,10 +83,80 @@
       <a-entity camera></a-entity>
     </a-scene>
 
-<div id="controls">
-  <button onclick="playMedia()"><i class="fa-solid fa-play"></i> Play</button>
-  <button onclick="pauseMedia()"><i class="fa-solid fa-pause"></i> Pause</button>
-  <button onclick="replayMedia()"><i class="fa-solid fa-rotate-right"></i> Replay</button>
-</div>
+    <div id="controls">
+      <button onclick="playMedia()"><i class="fa-solid fa-play"></i> Play</button>
+      <button onclick="pauseMedia()"><i class="fa-solid fa-pause"></i> Pause</button>
+      <button onclick="replayMedia()"><i class="fa-solid fa-rotate-right"></i> Replay</button>
+    </div>
+
+    <script>
+      const markers = {
+        marker1: {
+          model: '#model1',
+          sound: '#sound1'
+        },
+        marker2: {
+          model: '#model2',
+          sound: '#sound2'
+        }
+      };
+
+      let activeMarker = null;
+
+      AFRAME.scenes[0].addEventListener('loaded', () => {
+        Object.keys(markers).forEach(id => {
+          const markerEl = document.querySelector(`#${id}`);
+          markerEl.addEventListener('markerFound', () => {
+            activeMarker = id;
+            const model = document.querySelector(markers[id].model);
+            const sound = document.querySelector(markers[id].sound);
+            if (model.components['animation-mixer']) {
+              model.components['animation-mixer'].play();
+            }
+            if (sound.components.sound && !sound.components.sound.isPlaying) {
+              sound.components.sound.playSound();
+            }
+          });
+
+          markerEl.addEventListener('markerLost', () => {
+            const model = document.querySelector(markers[id].model);
+            const sound = document.querySelector(markers[id].sound);
+            if (model.components['animation-mixer']) {
+              model.components['animation-mixer'].stopAction();
+            }
+            if (sound.components.sound && sound.components.sound.isPlaying) {
+              sound.components.sound.stopSound();
+            }
+            activeMarker = null;
+          });
+        });
+      });
+
+      function playMedia() {
+        if (!activeMarker) return;
+        const model = document.querySelector(markers[activeMarker].model);
+        const sound = document.querySelector(markers[activeMarker].sound);
+        model.components['animation-mixer'].play();
+        sound.components.sound.playSound();
+      }
+
+      function pauseMedia() {
+        if (!activeMarker) return;
+        const model = document.querySelector(markers[activeMarker].model);
+        const sound = document.querySelector(markers[activeMarker].sound);
+        model.components['animation-mixer'].pause();
+        sound.components.sound.pause();
+      }
+
+      function replayMedia() {
+        if (!activeMarker) return;
+        const model = document.querySelector(markers[activeMarker].model);
+        const sound = document.querySelector(markers[activeMarker].sound);
+        model.components['animation-mixer'].stopAction();
+        model.components['animation-mixer'].play();
+        sound.components.sound.stopSound();
+        sound.components.sound.playSound();
+      }
+    </script>
   </body>
 </html>
