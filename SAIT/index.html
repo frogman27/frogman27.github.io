@@ -1,180 +1,122 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Multi-Marker WebAR Viewer (Debug Enabled)</title>
-  <script src="js/aframe.min.js"></script>
-  <script src="js/aframe-ar.min.js"></script>
-  <link rel="stylesheet" href="css/all.min.css">
-  <style>
-    * { box-sizing: border-box; }
-    #controls {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100vw;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      padding: 10px;
-      background-color: rgba(255, 255, 255, 0.85);
-      z-index: 9999;
-    }
-    #controls button {
-      flex: 1 1 auto;
-      font-size: 1.2rem;
-      padding: 10px 20px;
-      margin: 5px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      background-color: white;
-      cursor: pointer;
-      min-width: 100px;
-      max-width: 160px;
-    }
-    i[class^="fa-"] {
-      font-family: "Font Awesome 6 Free";
-      font-weight: 900;
-    }
-  </style>
-</head>
-<body style="margin: 0; overflow: hidden;">
-  <a-scene
-    vr-mode-ui="enabled: false"
-    embedded
-    arjs="sourceType: webcam; debugUIEnabled: false; cameraParametersUrl: data/camera_para.dat"
-  >
-    <!-- Marker 1 -->
-    <a-marker id="marker1" type="pattern" url="markers/marker1.patt" emitevents="true">
-      <a-entity
-        id="model1"
-        gltf-model="models/marker1.glb"
-        animation-mixer="clip: *; loop: once"
-        scale="0.5 0.5 0.5"
-      ></a-entity>
-      <a-sound id="sound1" src="audio/marker1.mp3" autoplay="false"></a-sound>
-    </a-marker>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity WebGL Player | SAIT</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+  </head>
+  <body>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="unity-footer">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">SAIT</div>
+      </div>
+    </div>
+    <script>
 
-    <!-- Camera -->
-    <a-entity camera></a-entity>
-  </a-scene>
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var warningBanner = document.querySelector("#unity-warning");
 
-  <!-- UI Buttons -->
-  <div id="controls">
-    <button onclick="playMedia()"><i class="fa-solid fa-play"></i> Play</button>
-    <button onclick="pauseMedia()"><i class="fa-solid fa-pause"></i> Pause</button>
-    <button onclick="replayMedia()"><i class="fa-solid fa-rotate-right"></i> Replay</button>
-  </div>
-
-  <!-- Diagnostic Script -->
-  <script>
-    const markers = {
-      marker1: {
-        model: '#model1',
-        sound: '#sound1'
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
       }
-    };
 
-    let activeMarker = null;
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/Builds.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/Builds.data.gz",
+        frameworkUrl: buildUrl + "/Builds.framework.js.gz",
+        codeUrl: buildUrl + "/Builds.wasm.gz",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "SAIT",
+        productVersion: "1.2.9",
+        showBanner: unityShowBanner,
+      };
 
-    AFRAME.scenes[0].addEventListener('loaded', () => {
-      console.log('A-Frame scene loaded');
-      Object.keys(markers).forEach(id => {
-        const markerEl = document.querySelector(`#${id}`);
-        const modelEl = document.querySelector(markers[id].model);
-        const soundEl = document.querySelector(markers[id].sound);
+      // By default, Unity keeps WebGL canvas render target size matched with
+      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+      // Set this to false if you want to decouple this synchronization from
+      // happening inside the engine, and you would instead like to size up
+      // the canvas DOM size and WebGL render target sizes yourself.
+      // config.matchWebGLToCanvasSize = false;
 
-        // Log when marker is found
-        markerEl.addEventListener('markerFound', () => {
-          console.log(`📌 Marker found: ${id}`);
-          activeMarker = id;
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
 
-          // Check and log model load
-          if (!modelEl.hasLoaded) {
-            console.log('⏳ Waiting for model to load...');
-            modelEl.addEventListener('model-loaded', (e) => {
-              console.log('✅ Model loaded');
-              const anims = e.detail.model.animations;
-              console.log('📽️ Animations available:', anims.map(a => a.name));
-              if (modelEl.components['animation-mixer']) {
-                modelEl.components['animation-mixer'].play();
-                console.log('▶️ Animation started');
-              }
-              if (soundEl.components.sound && !soundEl.components.sound.isPlaying) {
-                soundEl.components.sound.playSound();
-                console.log('🔊 Sound played');
-              }
-            });
-          } else {
-            console.log('✅ Model already loaded');
-            if (modelEl.components['animation-mixer']) {
-              modelEl.components['animation-mixer'].play();
-              console.log('▶️ Animation started');
-            }
-            if (soundEl.components.sound && !soundEl.components.sound.isPlaying) {
-              soundEl.components.sound.playSound();
-              console.log('🔊 Sound played');
-            }
-          }
-        });
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        container.className = "unity-mobile";
+        canvas.className = "unity-mobile";
 
-        // Log when marker is lost
-        markerEl.addEventListener('markerLost', () => {
-          console.log(`❌ Marker lost: ${id}`);
-          if (modelEl.components['animation-mixer']) {
-            modelEl.components['animation-mixer'].stopAction();
-            console.log('⏹️ Animation stopped');
-          }
-          if (soundEl.components.sound && soundEl.components.sound.isPlaying) {
-            soundEl.components.sound.stopSound();
-            console.log('🔇 Sound stopped');
-          }
-          activeMarker = null;
-        });
-      });
-    });
+        // To lower canvas resolution on mobile devices to gain some
+        // performance, uncomment the following line:
+        // config.devicePixelRatio = 1;
 
-    // Playback Controls
-    function playMedia() {
-      if (!activeMarker) return;
-      const model = document.querySelector(markers[activeMarker].model);
-      const sound = document.querySelector(markers[activeMarker].sound);
-      if (model.components['animation-mixer']) {
-        model.components['animation-mixer'].play();
-        console.log('▶️ Play button pressed');
+
+      } else {
+        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
+
+        canvas.style.width = "960px";
+        canvas.style.height = "600px";
       }
-      if (sound.components.sound) {
-        sound.components.sound.playSound();
-      }
-    }
 
-    function pauseMedia() {
-      if (!activeMarker) return;
-      const model = document.querySelector(markers[activeMarker].model);
-      const sound = document.querySelector(markers[activeMarker].sound);
-      if (model.components['animation-mixer']) {
-        model.components['animation-mixer'].pause();
-        console.log('⏸️ Pause button pressed');
-      }
-      if (sound.components.sound) {
-        sound.components.sound.pause();
-      }
-    }
+      loadingBar.style.display = "block";
 
-    function replayMedia() {
-      if (!activeMarker) return;
-      const model = document.querySelector(markers[activeMarker].model);
-      const sound = document.querySelector(markers[activeMarker].sound);
-      if (model.components['animation-mixer']) {
-        model.components['animation-mixer'].stopAction();
-        model.components['animation-mixer'].play();
-        console.log('🔁 Replay button pressed');
-      }
-      if (sound.components.sound) {
-        sound.components.sound.stopSound();
-        sound.components.sound.playSound();
-      }
-    }
-  </script>
-</body>
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          progressBarFull.style.width = 100 * progress + "%";
+              }).then((unityInstance) => {
+                loadingBar.style.display = "none";
+                fullscreenButton.onclick = () => {
+                  unityInstance.SetFullscreen(1);
+                };
+              }).catch((message) => {
+                alert(message);
+              });
+            };
+
+      document.body.appendChild(script);
+
+    </script>
+  </body>
 </html>
