@@ -63,11 +63,12 @@
         <a-entity
           id="model1"
           gltf-model="models/marker1.glb"
-          animation-mixer="clip: *"
+          animation-mixer="clip: Greeting; loop: once"
           scale="0.5 0.5 0.5"
         ></a-entity>
         <a-sound id="sound1" src="audio/marker1.mp3" autoplay="false"></a-sound>
       </a-marker>
+
 
       <!-- Marker 2 -->
       <a-marker id="marker2" type="pattern" url="markers/marker2.patt" emitevents="true">
